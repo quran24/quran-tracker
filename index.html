@@ -9,7 +9,17 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-        @import url('https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Playfair+Display:wght@700;900&family=Cinzel:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Playfair+Display:wght@700;900&family=Cinzel:wght@700&family=Amiri+Quran&display=swap');
+        
+        @font-face {
+            font-family: 'me_quran';
+            src: url('https://cdn.jsdelivr.net/gh/rn-k/quran-fonts@master/me_quran.woff2') format('woff2'),
+                 url('https://cdn.jsdelivr.net/gh/rn-k/quran-fonts@master/me_quran.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+
         .cert-title-font { font-family: 'Playfair Display', 'Georgia', serif; }
         .cert-arabic-font { font-family: 'Georgia', serif; }
         .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
@@ -68,6 +78,15 @@
 
         /* Juz plan card */
         .juz-plan-card { background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7)); backdrop-filter: blur(8px); border-radius: 1.5rem; }
+
+        /* Audio Bars Animation */
+        .audio-bar { width: 6px; background-color: #10b981; border-radius: 4px; animation: bounce-bar 1s infinite ease-in-out; }
+        .audio-bar:nth-child(1) { animation-delay: 0s; height: 12px; }
+        .audio-bar:nth-child(2) { animation-delay: 0.2s; height: 24px; }
+        .audio-bar:nth-child(3) { animation-delay: 0.4s; height: 16px; }
+        .audio-bar:nth-child(4) { animation-delay: 0.6s; height: 28px; }
+        .audio-bar:nth-child(5) { animation-delay: 0.8s; height: 14px; }
+        @keyframes bounce-bar { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -115,7 +134,6 @@ const MEMORIZATION_PLANS = [
     { id: 'r_2', arTitle: 'نصف حزب يومياً (٥ أيام/أسبوع)', enTitle: 'Half Hezb (5 days/week)', days: 168, arTarget: 'نصف حزب حفظ + يومان مراجعة', enTarget: 'Half Hezb + 2 days revision' }
 ];
 
-// Juz-specific plans: ayahs per week options
 const JUZ_WEEKLY_PLANS = [
     { id: 'none', arLabel: 'بدون خطة', enLabel: 'No Plan', ayahsPerWeek: 0 },
     { id: 'w2',   arLabel: '٢ آيات/أسبوع', enLabel: '2 Ayahs/week', ayahsPerWeek: 2 },
@@ -188,12 +206,12 @@ const tDict = {
         memorizingNow:"مسار الحفظ",completedSurahsList:"السور المكتملة",
         needsRevision:"يحتاج تركيز",recentRevisions:"مُراجَع حديثاً",oldRevisions:"مُراجَع قديماً",
         noData:"لا توجد بيانات",
-        shareLink:"مشاركة كود ولي الأمر",
-        linkCopied:"تم نسخ رسالة المتابعة! يمكنك لصقها وإرسالها على الواتساب.",
+        shareLink:"مشاركة كود الطالب",
+        linkCopied:"تم نسخ كود الطالب!",
         issueCert:"إصدار شهادة التميز",certTitle:"شهادة إنجاز قرآني",
-        certAwardedTo:"تمنح هذه الشهادة للطالب/ة",
+        certAwardedTo:"يُسعدنا أن نشهد بأن الطالب/ة",
         certForReaching:"قد أتم بفضل الله وتوفيقه حفظ",certFromQuran:"من كتاب الله الكريم.",
-        certDate:"تاريخ الإصدار",parentPortal:"بوابة ولي الأمر",
+        certDate:"تاريخ الإصدار",parentPortal:"بوابة الطالب",
         certHonorBoard:"لوحة الشرف والشهادات",certAchievement:"شهادة إنجاز",
         chooseCertLang:"اختر لغة الشهادة للطالب",issueCertAr:"إصدار بالعربية",issueCertEn:"إصدار بالإنجليزية",
         planTitle:"خطة الحفظ:",planTarget:"المطلوب:",planETA:"المتبقي للختم:",
@@ -210,7 +228,6 @@ const tDict = {
         completedCount:"مكتملة",inProgressCount:"قيد الحفظ",notStartedCount:"لم تبدأ",
         resetSurahData:"تصفير هذه السورة",confirmResetSurah:"هل أنت متأكد من تصفير بيانات هذه السورة؟",
         juz30Desc:"٣٧ سورة — من النبأ إلى الناس",juz29Desc:"١١ سورة — من الملك إلى المرسلات",
-        // Juz plan
         juzWeeklyPlan:"خطة الحفظ الأسبوعية",setJuzPlan:"تحديد الخطة الأسبوعية",
         juzPlanDesc:"اختر عدد الآيات التي يحفظها الطالب أسبوعياً:",
         weeklyTarget:"الهدف الأسبوعي",remainingAyahs:"الآيات المتبقية",
@@ -223,7 +240,7 @@ const tDict = {
         juzCertHonorBoard:"لوحة شرف الجزء",juzIssueCert:"إصدار شهادة",
         juzCertForReaching:"قد أتم بفضل الله حفظ",juzCertJuz30:"الجزء الثلاثين (جزء عمّ)",juzCertJuz29:"الجزء التاسع والعشرين (جزء تبارك)",
         juzCertSaved:"تم حفظ الشهادة في لوحة شرف الجزء!",
-        certWizardTitle:"إعدادات الشهادة", // Updated title
+        certWizardTitle:"إعدادات الشهادة",
         certWizardStep1:"١. اختر اللغة",certWizardStep2:"٢. سبب الشهادة",certWizardStep3:"٣. ملصق تزييني",
         certReasonLabel:"اختر سبب الشهادة:",certStickerLabel:"اختر ملصقاً (اختياري):",
         certReasons_ar:[
@@ -243,7 +260,12 @@ const tDict = {
         certCustomReasonPlaceholder:"اكتب سبب الشهادة...",
         certIssueBtn:"إصدار وحفظ الشهادة",
         ayahsPerWeek:"آيات/أسبوع",
-        copyright:"© 2026 المتتبع الذكي لحفظ القرآن. جميع الحقوق محفوظة.",
+        copyright:"© 2026 منصة المتتبع الذكي لحفظ القرآن. جميع الحقوق محفوظة.",
+        listenSurah:"استماع",fromAyah:"من آية",toAyah:"إلى آية",play:"تشغيل",pause:"إيقاف مؤقت",stop:"إيقاف",nowPlaying:"يتم الآن تلاوة الآية",audioPlayer:"مشغل التلاوة (بصوت الحصري)",close:"إغلاق",
+        assignHW:"تعيين واجب", assignHWTitle:"تعيين واجب استماع", hwRepetitions:"عدد مرات التكرار",
+        hwPending:"تكليف الطالب ⏳", hwCompleted:"تم إنجاز الواجب ✅", clearHW:"إلغاء الواجب",
+        newHWAlert:"🎧 لديك واجب استماع جديد!", startHW:"ابدأ الواجب", hwProgress:"تقدم الواجب",
+        times:"مرات", saveHW:"حفظ الواجب"
     },
     en: {
         title:"Smart Quran Tracker",welcomeCloud:"Welcome to Smart Quran Tracker",
@@ -277,12 +299,12 @@ const tDict = {
         memorizingNow:"Memorizing Now",completedSurahsList:"Completed Surahs",
         needsRevision:"Needs Focus",recentRevisions:"Recently Reviewed",oldRevisions:"Old Revisions",
         noData:"No data",
-        shareLink:"Share Parent Code",
-        linkCopied:"Tracking message copied! Paste it in WhatsApp.",
+        shareLink:"Share Student Code",
+        linkCopied:"Student code copied!",
         issueCert:"Issue Certificate",certTitle:"Quranic Achievement Certificate",
-        certAwardedTo:"This certificate is proudly presented to",
+        certAwardedTo:"We are proud to certify that",
         certForReaching:"has successfully memorized",certFromQuran:"of the Holy Quran.",
-        certDate:"Date Issued",parentPortal:"Parent Portal",
+        certDate:"Date Issued",parentPortal:"Student Portal",
         certHonorBoard:"Honor Board & Certificates",certAchievement:"Achievement Certificate",
         chooseCertLang:"Choose certificate language",issueCertAr:"Issue in Arabic",issueCertEn:"Issue in English",
         planTitle:"Plan:",planTarget:"Target:",planETA:"ETA to Khatm:",
@@ -299,7 +321,6 @@ const tDict = {
         completedCount:"Completed",inProgressCount:"In Progress",notStartedCount:"Not Started",
         resetSurahData:"Reset this Surah",confirmResetSurah:"Reset all data for this Surah?",
         juz30Desc:"37 Surahs — An-Naba to An-Nas",juz29Desc:"11 Surahs — Al-Mulk to Al-Mursalat",
-        // Juz plan
         juzWeeklyPlan:"Weekly Memorization Plan",setJuzPlan:"Set Weekly Plan",
         juzPlanDesc:"Choose how many ayahs the student memorizes per week:",
         weeklyTarget:"Weekly Target",remainingAyahs:"Remaining Ayahs",
@@ -312,7 +333,7 @@ const tDict = {
         juzCertHonorBoard:"Juz Honor Board",juzIssueCert:"Issue Certificate",
         juzCertForReaching:"has successfully memorized",juzCertJuz30:"Juz 30 (Amma)",juzCertJuz29:"Juz 29 (Tabarak)",
         juzCertSaved:"Certificate saved to the Juz honor board!",
-        certWizardTitle:"Certificate Settings", // Updated title
+        certWizardTitle:"Certificate Settings",
         certWizardStep1:"1. Choose Language",certWizardStep2:"2. Certificate Reason",certWizardStep3:"3. Decorative Sticker",
         certReasonLabel:"Select Reason:",certStickerLabel:"Select Sticker (optional):",
         certReasons_en:[
@@ -333,6 +354,11 @@ const tDict = {
         certIssueBtn:"Issue & Save Certificate",
         ayahsPerWeek:"Ayahs/week",
         copyright:"© 2026 Smart Quran Tracker. All rights reserved.",
+        listenSurah:"Listen",fromAyah:"From Ayah",toAyah:"To Ayah",play:"Play",pause:"Pause",stop:"Stop",nowPlaying:"Now Playing Ayah",audioPlayer:"Audio Player (Al Husary)",close:"Close",
+        assignHW:"Assign HW", assignHWTitle:"Assign Listening HW", hwRepetitions:"Repetitions",
+        hwPending:"Pending ⏳", hwCompleted:"Completed ✅", clearHW:"Clear HW",
+        newHWAlert:"🎧 You have a new listening assignment!", startHW:"Start HW", hwProgress:"HW Progress",
+        times:"times", saveHW:"Save HW"
     }
 };
 
@@ -369,6 +395,294 @@ const formatJuzETA = (remainingAyahs, ayahsPerWeek, isAr) => {
     if (isAr) return `${years} سنة${remMonths > 0 ? ` و ${remMonths} شهر` : ''}`;
     return `${years} year${years !== 1 ? 's' : ''}${remMonths > 0 ? ` and ${remMonths} month${remMonths !== 1 ? 's' : ''}` : ''}`;
 };
+
+// ── Teacher HW Alert Component ───────────────────────────────────────────────
+function TeacherHWAlert({ task, onClear, isAr, t }) {
+    if (!task) return null;
+    const surah = SURAHS_DATA.find(s => s.id === task.surahId);
+    const isCompleted = task.completed;
+    
+    const bgClass = isCompleted ? 'bg-red-50 border-red-200' : 'bg-purple-50 border-purple-200';
+    const textClass = isCompleted ? 'text-red-800' : 'text-purple-800';
+    const iconClass = isCompleted ? 'text-red-600 bg-red-200' : 'text-purple-600 bg-purple-200';
+    const icon = isCompleted ? 'fa-check-double' : 'fa-headphones-alt';
+
+    return (
+        <div className={`p-4 rounded-2xl border-2 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-fade-in-up ${bgClass}`}>
+           <div className="flex items-center gap-3 w-full sm:w-auto">
+               <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-xl ${iconClass}`}>
+                   <i className={`fas ${icon} ${isCompleted ? 'anim-tada' : 'anim-bounce-soft'}`}></i>
+               </div>
+               <div>
+                   <h4 className={`font-bold text-sm sm:text-base leading-tight ${textClass}`}>
+                       {isCompleted ? t('hwCompleted') : t('hwPending')}
+                   </h4>
+                   <p className={`text-xs mt-1 font-medium ${isCompleted ? 'text-red-600' : 'text-purple-600'}`}>
+                       {t('surah')} {surah?.[isAr ? 'name' : 'enName']} <span className="mx-1">•</span> {t('ayahs')} {task.fromAyah}-{task.toAyah} <span className="mx-1">•</span> {task.requiredRepeats} {t('times')}
+                   </p>
+               </div>
+           </div>
+           <div className="shrink-0 w-full sm:w-auto text-center">
+               <button onClick={onClear} className={`w-full sm:w-auto px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border transition-colors shadow-sm ${isCompleted ? 'bg-white text-red-600 hover:bg-red-100 border-red-200' : 'bg-white text-purple-600 hover:bg-purple-100 border-purple-200'}`}>
+                   <i className="fas fa-trash-alt mr-1"></i> {t('clearHW')}
+               </button>
+           </div>
+        </div>
+    );
+}
+
+// ── HW Assignment Modal ──────────────────────────────────────────────────────
+function AssignHWModal({ onClose, onSave, isAr, t }) {
+    const [surahId, setSurahId] = useState(1);
+    const [fromAyah, setFromAyah] = useState(1);
+    const [toAyah, setToAyah] = useState(7);
+    const [repeats, setRepeats] = useState(3);
+
+    const selectedSurah = SURAHS_DATA.find(s => s.id === Number(surahId));
+
+    useEffect(() => {
+        if (selectedSurah) {
+            setFromAyah(1);
+            setToAyah(Math.min(5, selectedSurah.totalAyahs));
+        }
+    }, [surahId]);
+
+    const handleSave = () => {
+        onSave({
+            surahId: Number(surahId),
+            fromAyah: Number(fromAyah),
+            toAyah: Number(toAyah),
+            requiredRepeats: Number(repeats),
+            completed: false,
+            id: Date.now().toString()
+        });
+    };
+
+    return (
+        <div className="fixed inset-0 z-[250] flex items-center justify-center bg-slate-900/80 p-4 backdrop-blur-sm" dir={isAr?'rtl':'ltr'}>
+            <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-fade-in-up">
+                <div className="bg-purple-600 p-4 text-white flex justify-between items-center">
+                    <h3 className="font-bold flex items-center gap-2"><i className="fas fa-headphones-alt"></i> {t('assignHWTitle')}</h3>
+                    <button onClick={onClose} className="hover:bg-purple-500 w-8 h-8 rounded-full flex items-center justify-center"><i className="fas fa-times"></i></button>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">{t('surah')}</label>
+                        <select value={surahId} onChange={(e) => setSurahId(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-purple-500 font-bold">
+                            {SURAHS_DATA.map(s => <option key={s.id} value={s.id}>{s.id}. {isAr?s.name:s.enName}</option>)}
+                        </select>
+                    </div>
+                    <div className="flex gap-3">
+                        <div className="flex-1">
+                            <label className="block text-xs font-bold text-slate-500 mb-1">{t('fromAyah')}</label>
+                            <input type="number" min="1" max={selectedSurah?.totalAyahs||1} value={fromAyah} onChange={(e) => setFromAyah(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-purple-500 text-center font-bold" />
+                        </div>
+                        <div className="flex-1">
+                            <label className="block text-xs font-bold text-slate-500 mb-1">{t('toAyah')}</label>
+                            <input type="number" min="1" max={selectedSurah?.totalAyahs||1} value={toAyah} onChange={(e) => setToAyah(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-purple-500 text-center font-bold" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">{t('hwRepetitions')}</label>
+                        <select value={repeats} onChange={(e) => setRepeats(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-purple-500 font-bold text-center">
+                            {[1, 2, 3, 5, 7, 10, 15, 20].map(n => <option key={n} value={n}>{n} {t('times')}</option>)}
+                        </select>
+                    </div>
+                </div>
+                <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+                    <button onClick={onClose} className="flex-1 py-2.5 rounded-xl font-bold text-slate-500 bg-white border border-slate-200 hover:bg-slate-100">{t('cancel')}</button>
+                    <button onClick={handleSave} className="flex-1 py-2.5 rounded-xl font-bold text-white bg-purple-600 hover:bg-purple-500 shadow-md">{t('saveHW')}</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ── Audio Player Modal ───────────────────────────────────────────────────────
+function AudioPlayerModal({ surah, onClose, t, isAr, hwTask, onHWComplete }) {
+    const initialFrom = hwTask ? hwTask.fromAyah : 1;
+    const initialTo = hwTask ? hwTask.toAyah : surah.totalAyahs;
+
+    const [fromAyah, setFromAyah] = useState(initialFrom);
+    const [toAyah, setToAyah] = useState(initialTo);
+    const [currentAyah, setCurrentAyah] = useState(initialFrom);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [ayahText, setAyahText] = useState('');
+    const [isLoadingText, setIsLoadingText] = useState(false);
+    
+    const [loopsCompleted, setLoopsCompleted] = useState(0);
+    const [hwFinished, setHwFinished] = useState(false);
+    const audioRef = useRef(null);
+
+    const pad = (num) => String(num).padStart(3, '0');
+    // Using Mahmoud Khalil Al-Husary 128kbps from everyayah.com
+    const audioSrc = `https://everyayah.com/data/Husary_128kbps/${pad(surah.id)}${pad(currentAyah)}.mp3`;
+
+    useEffect(() => {
+        let isMounted = true;
+        const fetchAyahText = async () => {
+            setIsLoadingText(true);
+            try {
+                const res = await fetch(`https://api.alquran.cloud/v1/ayah/${surah.id}:${currentAyah}/quran-uthmani`);
+                const data = await res.json();
+                if (isMounted && data.code === 200) {
+                    setAyahText(data.data.text);
+                }
+            } catch (err) {
+                console.error('Failed to fetch ayah text', err);
+            } finally {
+                if (isMounted) setIsLoadingText(false);
+            }
+        };
+        fetchAyahText();
+        return () => { isMounted = false; };
+    }, [surah.id, currentAyah]);
+
+    useEffect(() => {
+        if (isPlaying && audioRef.current && !hwFinished) {
+            audioRef.current.play().catch(e => {
+                console.error('Audio play blocked or failed:', e);
+                setIsPlaying(false);
+            });
+        }
+    }, [currentAyah, isPlaying, hwFinished]);
+
+    const handlePlayPause = () => {
+        if (hwFinished) return;
+        if (isPlaying) {
+            audioRef.current.pause();
+            setIsPlaying(false);
+        } else {
+            let f = Math.max(1, Math.min(parseInt(fromAyah)||1, surah.totalAyahs));
+            let t_val = Math.max(f, Math.min(parseInt(toAyah)||surah.totalAyahs, surah.totalAyahs));
+            setFromAyah(f);
+            setToAyah(t_val);
+            if (!isPlaying && (currentAyah < f || currentAyah > t_val)) {
+                setCurrentAyah(f);
+            }
+            setIsPlaying(true);
+        }
+    };
+
+    const handleStop = () => {
+        setIsPlaying(false);
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+        setCurrentAyah(fromAyah);
+    };
+
+    const handleEnded = () => {
+        if (currentAyah < toAyah) {
+            setCurrentAyah(prev => prev + 1);
+        } else {
+            if (hwTask) {
+                const newLoops = loopsCompleted + 1;
+                setLoopsCompleted(newLoops);
+                if (newLoops >= hwTask.requiredRepeats) {
+                    setIsPlaying(false);
+                    setHwFinished(true);
+                    onHWComplete();
+                } else {
+                    setCurrentAyah(fromAyah); // loop back to start
+                }
+            } else {
+                setIsPlaying(false);
+                setCurrentAyah(fromAyah);
+            }
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 animate-fade-in-up" dir={isAr ? 'rtl' : 'ltr'}>
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border-2 border-green-500 relative">
+                
+                {hwFinished && (
+                    <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur flex flex-col items-center justify-center p-6 text-center animate-fade-in-up">
+                        <div className="text-6xl mb-4 anim-tada">🎉</div>
+                        <h2 className="text-2xl font-bold text-green-700 mb-2">{isAr ? 'أحسنت!' : 'Great Job!'}</h2>
+                        <p className="text-slate-600 font-medium mb-6">{isAr ? 'لقد أتممت واجب الاستماع بنجاح.' : 'You have successfully completed the listening assignment.'}</p>
+                        <button onClick={onClose} className="bg-green-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-green-500 w-full transition-transform hover:scale-105">{t('close')}</button>
+                    </div>
+                )}
+
+                <div className={`p-4 flex justify-between items-center text-white ${hwTask ? 'bg-gradient-to-r from-purple-800 to-purple-600' : 'bg-gradient-to-r from-green-800 to-green-600'}`}>
+                    <div className="flex items-center gap-2">
+                        <i className="fas fa-headphones-alt text-xl text-white/80"></i>
+                        <span className="font-bold">{hwTask ? t('assignHW') : t('audioPlayer')}</span>
+                    </div>
+                    <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
+                        <i className="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div className="p-6">
+                    <div className="text-center mb-6">
+                        <h2 className="text-2xl font-bold text-slate-800 mb-1">{isAr ? surah.name : surah.enName}</h2>
+                        <p className="text-sm text-slate-500">{t('ayahs')} {surah.totalAyahs}</p>
+                    </div>
+
+                    {hwTask && (
+                        <div className="bg-purple-50 text-purple-800 p-2.5 rounded-xl text-center font-bold text-sm mb-5 border border-purple-200 shadow-sm flex items-center justify-center gap-2">
+                            <i className="fas fa-sync-alt text-purple-500"></i>
+                            {t('hwProgress')}: <span className="text-lg mx-1">{loopsCompleted}</span> / {hwTask.requiredRepeats} {t('times')}
+                        </div>
+                    )}
+
+                    <div className="flex gap-4 mb-6">
+                        <div className="flex-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <label className="block text-xs font-bold text-slate-500 mb-1">{t('fromAyah')}</label>
+                            <input type="number" min="1" max={surah.totalAyahs} value={fromAyah} disabled={isPlaying || !!hwTask}
+                                onChange={(e) => setFromAyah(e.target.value)}
+                                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-center font-bold focus:outline-none focus:border-green-500 disabled:opacity-50" />
+                        </div>
+                        <div className="flex-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <label className="block text-xs font-bold text-slate-500 mb-1">{t('toAyah')}</label>
+                            <input type="number" min="1" max={surah.totalAyahs} value={toAyah} disabled={isPlaying || !!hwTask}
+                                onChange={(e) => setToAyah(e.target.value)}
+                                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-center font-bold focus:outline-none focus:border-green-500 disabled:opacity-50" />
+                        </div>
+                    </div>
+
+                    <div className={`${hwTask ? 'bg-purple-50 border-purple-100' : 'bg-green-50 border-green-100'} rounded-2xl p-4 flex flex-col items-center justify-center mb-6 border min-h-[140px] relative`}>
+                        <div className="absolute top-3 right-3 flex items-end justify-center gap-1 h-4">
+                            {isPlaying ? (
+                                <>
+                                    <div className="audio-bar w-1"></div><div className="audio-bar w-1"></div><div className="audio-bar w-1"></div>
+                                </>
+                            ) : (
+                                <i className={`fas fa-music ${hwTask ? 'text-purple-300/50' : 'text-green-300/50'}`}></i>
+                            )}
+                        </div>
+                        
+                        <div className="text-center w-full mt-2 mb-3">
+                            <span className={`text-xs font-bold ${hwTask ? 'text-purple-600' : 'text-green-600'} mb-2 block`}>{t('nowPlaying')}: {currentAyah}</span>
+                            {isLoadingText ? (
+                                <div className="flex justify-center py-4"><i className={`fas fa-spinner fa-spin ${hwTask ? 'text-purple-400' : 'text-green-400'} text-2xl`}></i></div>
+                            ) : (
+                                <p className="text-[28px] sm:text-[36px] text-slate-800 text-center leading-normal" dir="rtl" style={{ fontFamily: "'Traditional Arabic', 'me_quran', serif", padding: '0 10px' }}>
+                                    {ayahText} <span className={`${hwTask ? 'text-purple-700' : 'text-green-700'} text-[24px] mx-1 font-sans`}>﴿{Number(currentAyah).toLocaleString('ar-EG')}﴾</span>
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex justify-center gap-4">
+                        <button onClick={handlePlayPause} className={`w-16 h-16 rounded-full ${hwTask ? 'bg-purple-600 hover:bg-purple-500 shadow-purple-500/40' : 'bg-green-600 hover:bg-green-500 shadow-green-500/40'} text-white shadow-lg flex items-center justify-center text-2xl transition-transform hover:scale-105`}>
+                            <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play pl-1'}`}></i>
+                        </button>
+                        <button onClick={handleStop} disabled={!isPlaying && currentAyah === fromAyah} className="w-16 h-16 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 flex items-center justify-center text-xl transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100">
+                            <i className="fas fa-stop"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <audio ref={audioRef} src={audioSrc} onEnded={handleEnded} preload="auto" />
+            </div>
+        </div>
+    );
+}
 
 // ── Sticker Picker ───────────────────────────────────────────────────────────
 function StickerPicker({ onSelect, onClose, isAr }) {
@@ -458,13 +772,6 @@ function JuzVisualReport({ juzNum, surahs, juzData, juzPlanId, isAr, t, totalJuz
     const borderColor = isJuz30 ? 'border-green-200' : 'border-amber-200';
     const textColor = isJuz30 ? 'text-green-800' : 'text-amber-800';
     const headerGrad = isJuz30 ? 'from-green-800 to-green-600' : 'from-amber-600 to-yellow-500';
-
-    const SurahBadge = ({ s, color }) => (
-        <button onClick={() => onScrollToSurah && onScrollToSurah(s.id)}
-            className={`${color} px-2.5 py-1 rounded-lg text-[11px] font-bold border shadow-sm hover:opacity-80 transition-opacity flex flex-col items-center justify-center min-w-[60px] text-center`}>
-            <span>{isAr ? s.name : s.enName}</span>
-        </button>
-    );
 
     return (
         <div className="space-y-6">
@@ -589,7 +896,7 @@ function JuzVisualReport({ juzNum, surahs, juzData, juzPlanId, isAr, t, totalJuz
     );
 }
 
-// ── Juz Plan Selector (shown inline in Juz section header) ───────────────────
+// ── Juz Plan Selector ────────────────────────────────────────────────────────
 function JuzPlanSelector({ juzNum, planId, onSetPlan, isReadOnly, isAr, t }) {
     const [open, setOpen] = useState(false);
     const plan = JUZ_WEEKLY_PLANS.find(p => p.id === (planId || 'none')) || JUZ_WEEKLY_PLANS[0];
@@ -683,7 +990,7 @@ function FullQuranPlanSelector({ planId, onSetPlan, isReadOnly, isAr, t }) {
 }
 
 // ── Child-Friendly Surah Card for Juz 29/30 ─────────────────────────────────
-function JuzSurahCard({ surah, juzData, onUpdate, isReadOnly, isAr, t, juzNum }) {
+function JuzSurahCard({ surah, juzData, onUpdate, isReadOnly, isAr, t, juzNum, onPlayAudio }) {
     const data = juzData[surah.id] || { memorized: 0, revisions: {}, stickers: [] };
     const { memorized, revisions, stickers } = data;
     const isComplete = memorized === surah.totalAyahs;
@@ -721,6 +1028,9 @@ function JuzSurahCard({ surah, juzData, onUpdate, isReadOnly, isAr, t, juzNum })
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{ background:accentColor }}>{surah.id}</span>
                         <h3 className="text-base font-bold text-slate-800 truncate">{isAr ? surah.name : surah.enName}</h3>
+                        <button onClick={() => onPlayAudio({ surah, hwTask: null })} className="text-green-500 hover:text-green-700 bg-green-50 hover:bg-green-100 w-6 h-6 rounded-full flex items-center justify-center transition-colors" title={t('listenSurah')}>
+                            <i className="fas fa-headphones-alt text-xs"></i>
+                        </button>
                         {isComplete && <span className="text-yellow-500 text-lg anim-tada">🌟</span>}
                     </div>
                     <p className="text-xs text-slate-400 mt-0.5">{isAr ? surah.enName : surah.enMeaning} • {surah.totalAyahs} {t('ayahs')}</p>
@@ -814,7 +1124,7 @@ const CERT_STICKERS = [
     '⭐','🎉','🎊','🦋','🌸','💫','✨','🌠','🏅','🎗️','🌿','💚'
 ];
 
-// ── Unified Certificate Display — Classic Elegant Frame ──────────
+// ── Unified Certificate Display ──────────────────────────────────────────────
 function CertDisplay({ cert, studentName }) {
     const certLang = cert?.certLang || 'ar';
     const isRtl = certLang === 'ar';
@@ -827,100 +1137,59 @@ function CertDisplay({ cert, studentName }) {
     return (
         <div style={{
             width:'740px', height:'560px', position:'relative',
-            backgroundColor:'#124028', /* Dark green outer edge */
-            flexShrink:0, overflow:'hidden',
+            backgroundColor:'#124028', flexShrink:0, overflow:'hidden',
             fontFamily:"'Georgia','Times New Roman',serif",
         }}>
-            {/* ── Classic Certificate Frame Layering ── */}
-            {/* 1. Outer Gold Line */}
             <div style={{ position:'absolute', inset:'12px', border:'1px solid #d0a53f', zIndex:2, pointerEvents:'none' }} />
-            
-            {/* 2. Corner Gold Squares overlapping the line */}
             {[
                 { top:'9px', left:'9px' }, { top:'9px', right:'9px' },
                 { bottom:'9px', left:'9px' }, { bottom:'9px', right:'9px' }
             ].map((pos, i) => (
                 <div key={i} style={{ position:'absolute', ...pos, width:'8px', height:'8px', backgroundColor:'#d0a53f', zIndex:3 }} />
             ))}
-
-            {/* 3. White/Cream Canvas */}
             <div style={{ position:'absolute', inset:'18px', backgroundColor:'#fdfcf6', zIndex:1 }} />
-
-            {/* 4. Inner Borders on White Canvas */}
             <div style={{ position:'absolute', inset:'26px', border:'2px solid #d0a53f', zIndex:4, pointerEvents:'none' }} />
             <div style={{ position:'absolute', inset:'30px', border:'1px solid #124028', zIndex:4, pointerEvents:'none' }} />
 
-            {/* ── Content ── */}
             <div style={{
                 position:'absolute', inset:'32px', zIndex:10,
                 display:'flex', flexDirection:'column', alignItems:'center',
                 textAlign:'center', padding:'12px 40px 8px',
                 direction: isRtl ? 'rtl' : 'ltr', boxSizing:'border-box',
             }}>
-
-                {/* Top Header Group */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    {/* Generic Book Icon */}
-                    <div style={{
-                        width:'58px', height:'58px', borderRadius:'50%',
-                        border:'2.5px solid #d0a53f', background:'white',
-                        marginBottom:'8px', flexShrink:0,
-                        boxShadow:'0 2px 6px rgba(0,0,0,0.1)',
-                        display:'flex', alignItems:'center', justifyContent:'center',
-                        fontSize:'28px'
-                    }}>
-                        📖
+                    <div style={{ width:'58px', height:'58px', borderRadius:'50%', border:'2.5px solid #d0a53f', background:'white', marginBottom:'8px', flexShrink:0, boxShadow:'0 2px 6px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#124028', fontSize: '26px' }}>
+                        <i className="fas fa-book-open"></i>
                     </div>
+                    <p style={{ color:'#124028', fontWeight:'700', letterSpacing:'4px', fontSize:'12px', textTransform:'uppercase', margin:'0 0 4px' }}>
+                        {cT('certInNameOfAllah')}
+                    </p>
+                    <h1 style={{
+                        color:'#d0a53f', fontWeight: isRtl ? '700' : '900', fontSize: isRtl ? '56px' : '46px',
+                        margin:'0 0 2px', lineHeight:1.05,
+                        fontFamily: isRtl ? "'Aref Ruqaa', serif" : "'Georgia','Times New Roman',serif",
+                        fontStyle: isRtl ? 'normal' : 'italic',
+                    }}>
+                        {cT('certAwardOfExcellence')}
+                    </h1>
+                </div>
 
-                    {/* IN THE NAME OF ALLAH */}
-                <p style={{
-                    color:'#124028', fontWeight:'700', letterSpacing:'4px',
-                    fontSize:'12px', textTransform:'uppercase', margin:'0 0 4px',
-                }}>
-                    {cT('certInNameOfAllah')}
-                </p>
-
-                {/* Award of Excellence */}
-                <h1 style={{
-                    color:'#d0a53f', fontWeight: isRtl ? '700' : '900', fontSize: isRtl ? '56px' : '46px',
-                    margin:'0 0 2px', lineHeight:1.05,
-                    fontFamily: isRtl ? "'Aref Ruqaa', serif" : "'Georgia','Times New Roman',serif",
-                    fontStyle: isRtl ? 'normal' : 'italic',
-                }}>
-                    {cT('certAwardOfExcellence')}
-                </h1>
-            </div>
-
-            {/* Middle Flex Area (Distributes empty space nicely) */}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-evenly', width: '100%', padding: '4px 0' }}>
-                    
-                    {/* Recipient */}
                     <div>
-                        <p style={{ color:'#777', fontSize:'15px', fontStyle:'italic', margin:'0 0 6px' }}>
-                            {cT('certPresentedTo')}
-                        </p>
+                        <p style={{ color:'#777', fontSize:'15px', fontStyle:'italic', margin:'0 0 6px' }}>{cT('certPresentedTo')}</p>
                         <div style={{ display:'inline-block', padding:'0 20px' }}>
-                            <h2 style={{
-                                color:'#124028', fontWeight:'900', fontSize:'46px', margin:0, lineHeight:1.1,
-                                fontFamily:"'Georgia','Times New Roman',serif",
-                            }}>
+                            <h2 style={{ color:'#124028', fontWeight:'900', fontSize:'46px', margin:0, lineHeight:1.1, fontFamily:"'Georgia','Times New Roman',serif" }}>
                                 {studentName}
                             </h2>
                             <div style={{ borderBottom:'2px dashed #d0a53f', marginTop:'4px' }} />
                         </div>
                     </div>
-
-                    {/* Reason */}
                     <div>
-                        <p style={{ color:'#124028', fontWeight:'700', fontSize:'14px', margin:'0 0 8px' }}>
-                            {cT('certInRecognition')}
-                        </p>
+                        <p style={{ color:'#124028', fontWeight:'700', fontSize:'14px', margin:'0 0 8px' }}>{cT('certInRecognition')}</p>
                         <div style={{ margin:'0 auto', padding:'0 8px', maxWidth:'580px' }}>
                             <p style={{
-                                color:'#124028', fontWeight:'800', fontSize:'24px',
-                                fontStyle:'italic', margin:0, lineHeight: 1.4,
-                                fontFamily:"'Georgia','Times New Roman',serif",
-                                direction: isRtl ? 'rtl' : 'ltr',
+                                color:'#124028', fontWeight:'800', fontSize:'24px', fontStyle:'italic', margin:0, lineHeight: 1.4,
+                                fontFamily:"'Georgia','Times New Roman',serif", direction: isRtl ? 'rtl' : 'ltr',
                             }}>
                                 &ldquo; {reason} &rdquo;
                             </p>
@@ -928,44 +1197,22 @@ function CertDisplay({ cert, studentName }) {
                     </div>
                 </div>
 
-                {/* Footer Group */}
                 <div style={{ width:'100%' }}>
                     <div style={{ width:'100%', borderTop:'1px solid #d0a53f', marginBottom:'10px' }} />
-                    <div style={{
-                        display:'flex', justifyContent:'space-between',
-                        alignItems:'flex-end', width:'100%',
-                    }}>
-                        {/* Teacher Signature */}
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', width:'100%' }}>
                         <div style={{ textAlign:'left', minWidth:'130px' }}>
-                            <p style={{ color:'#124028', fontWeight:'700', fontSize:'11px', margin:'0 0 4px', letterSpacing:'0.5px' }}>
-                                {cT('certTeacherSig')}
-                            </p>
-                            <p style={{
-                                color:'#124028', fontWeight:'900', fontSize:'16px',
-                                margin:0, fontFamily:"'Georgia',serif",
-                                direction: isRtl ? 'rtl' : 'ltr',
-                            }}>
+                            <p style={{ color:'#124028', fontWeight:'700', fontSize:'11px', margin:'0 0 4px', letterSpacing:'0.5px' }}>{cT('certTeacherSig')}</p>
+                            <p style={{ color:'#124028', fontWeight:'900', fontSize:'16px', margin:0, fontFamily:"'Georgia',serif", direction: isRtl ? 'rtl' : 'ltr' }}>
                                 {teacherSig}
                             </p>
                         </div>
-
-                        {/* Center Sticker */}
-                        <div style={{ fontSize:'42px', lineHeight:1, textAlign:'center' }}>
-                            {sticker}
-                        </div>
-
-                        {/* Date */}
+                        <div style={{ fontSize:'42px', lineHeight:1, textAlign:'center' }}>{sticker}</div>
                         <div style={{ textAlign:'right', minWidth:'130px' }}>
-                            <p style={{ color:'#124028', fontWeight:'700', fontSize:'11px', margin:'0 0 4px', letterSpacing:'0.5px' }}>
-                                {cT('certDate')}
-                            </p>
-                            <p style={{ color:'#124028', fontWeight:'900', fontSize:'15px', margin:0 }} dir="ltr">
-                                {dateStr}
-                            </p>
+                            <p style={{ color:'#124028', fontWeight:'700', fontSize:'11px', margin:'0 0 4px', letterSpacing:'0.5px' }}>{cT('certDate')}</p>
+                            <p style={{ color:'#124028', fontWeight:'900', fontSize:'15px', margin:0 }} dir="ltr">{dateStr}</p>
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
     );
@@ -993,8 +1240,6 @@ function CertWizard({ isAr, t, lang, pct, juzNum, studentName, onClose, onSave }
     return (
         <div className="fixed inset-0 z-[160] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4" dir={isAr?'rtl':'ltr'}>
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-6xl h-[95vh] sm:h-[85vh] flex flex-col overflow-hidden animate-fade-in-up border border-slate-200">
-                
-                {/* Header */}
                 <div className="bg-slate-50 border-b border-slate-200 p-4 sm:px-6 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="bg-yellow-100 p-2 rounded-lg text-yellow-600"><i className="fas fa-certificate text-xl"></i></div>
@@ -1007,31 +1252,19 @@ function CertWizard({ isAr, t, lang, pct, juzNum, studentName, onClose, onSave }
                         <i className="fas fa-times text-xl"></i>
                     </button>
                 </div>
-
-                {/* Content Split */}
                 <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
-                    
-                    {/* Control Panel (Settings) */}
                     <div className="w-full lg:w-[400px] xl:w-[450px] bg-white border-b lg:border-b-0 lg:border-inline-end border-slate-200 flex flex-col z-10 shrink-0">
                         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-8 custom-scrollbar">
-                            
-                            {/* 1. Language */}
                             <div>
                                 <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
                                     <span className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[11px] text-slate-500">1</span>
                                     {t('certWizardStep1').replace('١. ', '').replace('1. ', '')}
                                 </h3>
                                 <div className="flex p-1 bg-slate-100 rounded-xl">
-                                    <button onClick={()=>setCertLang('ar')} className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${certLang==='ar'?'bg-white text-green-700 shadow-sm border border-slate-200':'text-slate-500 hover:text-slate-700'}`}>
-                                        عربي
-                                    </button>
-                                    <button onClick={()=>setCertLang('en')} className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${certLang==='en'?'bg-white text-blue-700 shadow-sm border border-slate-200':'text-slate-500 hover:text-slate-700'}`}>
-                                        English
-                                    </button>
+                                    <button onClick={()=>setCertLang('ar')} className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${certLang==='ar'?'bg-white text-green-700 shadow-sm border border-slate-200':'text-slate-500 hover:text-slate-700'}`}>عربي</button>
+                                    <button onClick={()=>setCertLang('en')} className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${certLang==='en'?'bg-white text-blue-700 shadow-sm border border-slate-200':'text-slate-500 hover:text-slate-700'}`}>English</button>
                                 </div>
                             </div>
-
-                            {/* 2. Reason */}
                             <div>
                                 <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
                                     <span className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[11px] text-slate-500">2</span>
@@ -1051,8 +1284,6 @@ function CertWizard({ isAr, t, lang, pct, juzNum, studentName, onClose, onSave }
                                         className="w-full mt-3 px-4 py-3 border-2 border-green-300 rounded-xl focus:outline-none focus:border-green-600 font-medium text-sm shadow-inner" />
                                 )}
                             </div>
-
-                            {/* 3. Sticker & Signature */}
                             <div>
                                 <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
                                     <span className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[11px] text-slate-500">3</span>
@@ -1078,8 +1309,6 @@ function CertWizard({ isAr, t, lang, pct, juzNum, studentName, onClose, onSave }
                                 </div>
                             </div>
                         </div>
-                        
-                        {/* Footer Action */}
                         <div className="p-5 border-t border-slate-100 bg-slate-50 shrink-0">
                             <button disabled={!reasonId || (reasonId==='custom' && !customReason)} 
                                 onClick={()=>onSave({certLang, reason:finalReason, sticker, teacherSig})}
@@ -1090,15 +1319,12 @@ function CertWizard({ isAr, t, lang, pct, juzNum, studentName, onClose, onSave }
                             </button>
                         </div>
                     </div>
-
-                    {/* Live Preview Pane */}
                     <div className="flex-1 bg-slate-200/60 flex items-center justify-center relative shadow-inner overflow-hidden">
                         <div className="absolute top-4 left-4 right-4 flex justify-center pointer-events-none z-10">
                             <span className="bg-slate-800/60 text-white text-[10px] uppercase tracking-wider px-3 py-1 rounded-full backdrop-blur-sm font-bold shadow-sm">
                                 {isAr ? 'معاينة حية' : 'Live Preview'}
                             </span>
                         </div>
-                        {/* Zero-size wrapper trick to prevent layout clipping and perfectly center the scaled cert */}
                         <div className="w-0 h-0 flex items-center justify-center">
                             <div className="w-[740px] h-[560px] flex items-center justify-center origin-center transition-transform duration-300 scale-[0.45] sm:scale-[0.6] md:scale-[0.75] lg:scale-[0.75] xl:scale-[0.9]">
                                 <div className="shadow-2xl ring-1 ring-black/10 rounded-sm overflow-hidden">
@@ -1114,7 +1340,7 @@ function CertWizard({ isAr, t, lang, pct, juzNum, studentName, onClose, onSave }
 }
 
 // ── Juz Section (29 or 30) ───────────────────────────────────────────────────
-function JuzSection({ juzNum, surahs, student, onUpdate, isReadOnly, isAr, t, onIssueCert, onViewCert, getBadge, lang, onReset }) {
+function JuzSection({ juzNum, surahs, student, onUpdate, isReadOnly, isAr, t, onIssueCert, onViewCert, getBadge, lang, onReset, onPlayAudio, onClearHW }) {
     const juzKey = `juz${juzNum}Data`;
     const planKey = `juz${juzNum}PlanId`;
     const certKey = `juz${juzNum}Certificates`;
@@ -1150,7 +1376,6 @@ function JuzSection({ juzNum, surahs, student, onUpdate, isReadOnly, isAr, t, on
         if (el) { const y = el.getBoundingClientRect().top + window.pageYOffset - 220; window.scrollTo({ top:y, behavior:'smooth' }); }
     };
 
-    // Colors for cert border accent
     const certAccentBorder = isJuz30 ? 'border-green-200' : 'border-amber-200';
     const certAccentBg = isJuz30 ? 'bg-green-600' : 'bg-amber-500';
     const certIconColor = isJuz30 ? 'text-green-600' : 'text-amber-600';
@@ -1158,26 +1383,22 @@ function JuzSection({ juzNum, surahs, student, onUpdate, isReadOnly, isAr, t, on
 
     return (
         <div className="space-y-5">
-            {/* Completion banner */}
             {isFullyComplete && (
                 <div className={`rounded-2xl p-4 text-center font-bold text-lg border-2 ${isJuz30 ? 'bg-green-50 border-green-300 text-green-800' : 'bg-amber-50 border-amber-300 text-amber-800'}`}>
                     <span className="anim-tada inline-block">{t(isJuz30 ? 'juz30Complete' : 'juz29Complete')}</span>
                 </div>
             )}
 
-            {/* ── VISUAL REPORT ── */}
-            <JuzVisualReport
-                juzNum={juzNum}
-                surahs={surahs}
-                juzData={juzData}
-                juzPlanId={juzPlanId}
-                isAr={isAr}
-                t={t}
-                totalJuzAyahs={totalJuzAyahs}
-                onScrollToSurah={scrollToSurahCard}
-            />
+            {!isReadOnly && student.listeningTasks && student.listeningTasks.length > 0 && (
+                <div className="space-y-3">
+                    {student.listeningTasks.map(task => (
+                        <TeacherHWAlert key={task.id} task={task} onClear={() => onClearHW(task.id)} isAr={isAr} t={t} />
+                    ))}
+                </div>
+            )}
 
-            {/* ── HONOR BOARD & CERTIFICATES ── */}
+            <JuzVisualReport juzNum={juzNum} surahs={surahs} juzData={juzData} juzPlanId={juzPlanId} isAr={isAr} t={t} totalJuzAyahs={totalJuzAyahs} onScrollToSurah={scrollToSurahCard} />
+
             <div className={`bg-white rounded-3xl shadow-sm border ${certAccentBorder} p-5`}>
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
                     <h3 className="font-bold text-base flex items-center gap-2 text-slate-800">
@@ -1214,7 +1435,6 @@ function JuzSection({ juzNum, surahs, student, onUpdate, isReadOnly, isAr, t, on
                 )}
             </div>
 
-            {/* Reset Data Button */}
             {!isReadOnly && (
                 <div className="flex justify-end items-center">
                     <button onClick={onReset} className="flex items-center gap-2 text-red-600 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
@@ -1223,11 +1443,10 @@ function JuzSection({ juzNum, surahs, student, onUpdate, isReadOnly, isAr, t, on
                 </div>
             )}
 
-            {/* Surah cards grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {surahs.map(surah => (
                     <JuzSurahCard key={surah.id} surah={surah} juzData={juzData}
-                        onUpdate={handleUpdate} isReadOnly={isReadOnly} isAr={isAr} t={t} juzNum={juzNum} />
+                        onUpdate={handleUpdate} isReadOnly={isReadOnly} isAr={isAr} t={t} juzNum={juzNum} onPlayAudio={onPlayAudio} />
                 ))}
             </div>
         </div>
@@ -1242,8 +1461,9 @@ function App() {
     const toggleLang = () => { const n = isAr ? 'en' : 'ar'; setLang(n); localStorage.setItem('quran-lang', n); };
 
     const [syncKey, setSyncKey] = useState(() => {
-        const p = localStorage.getItem('quran-parent-code');
-        if (p && p.includes('-')) return p.split('-')[0];
+        if (localStorage.getItem('quran-parent-code')) {
+            return localStorage.getItem('quran-student-sync-key') || "";
+        }
         try { return localStorage.getItem('quran-sync-key') || ""; } catch(e) { return ""; }
     });
     const [isReadOnly, setIsReadOnly] = useState(() => !!localStorage.getItem('quran-parent-code'));
@@ -1257,7 +1477,7 @@ function App() {
     const [isAdminMode, setIsAdminMode] = useState(false);
     const [activeTab, setActiveTab] = useState('main');
 
-    const defaultStudent = { id:'1', name:'طالب 1', progress:{}, revisions:{}, certificates:[], planId:'none', juz30Data:{}, juz29Data:{}, juz30PlanId:'none', juz29PlanId:'none' };
+    const defaultStudent = { id:'1', name:'طالب 1', progress:{}, revisions:{}, certificates:[], planId:'none', juz30Data:{}, juz29Data:{}, juz30PlanId:'none', juz29PlanId:'none', listeningTasks:[] };
     const [students, setStudents] = useState([defaultStudent]);
     const [currentId, setCurrentId] = useState('1');
     const [allowedCodes, setAllowedCodes] = useState([]);
@@ -1268,9 +1488,11 @@ function App() {
     const [dialog, setDialog] = useState({ isOpen:false, type:'confirm', message:'', defaultValue:'', onConfirm:()=>{} });
     const [highlightedSurah, setHighlightedSurah] = useState(null);
     const [selectedCert, setSelectedCert] = useState(null);
-    const [selectedJuzCert, setSelectedJuzCert] = useState(null); // { cert, juzNum }
-    const [showCertWizard, setShowCertWizard] = useState(null); // { mode, certKey, pct, juzNum }
+    const [selectedJuzCert, setSelectedJuzCert] = useState(null);
+    const [showCertWizard, setShowCertWizard] = useState(null);
     const [isDataLoaded, setIsDataLoaded] = useState(false);
+    const [audioPlayerSurah, setAudioPlayerSurah] = useState(null);
+    const [showAssignHWModal, setShowAssignHWModal] = useState(false);
 
     useEffect(() => {
         if (!db || !syncKey || isAdminMode) return;
@@ -1280,14 +1502,21 @@ function App() {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 if (data.students && data.students.length > 0) {
-                    const migrated = data.students.map(s => ({
-                        juz30Data:{}, juz29Data:{}, juz30PlanId:'none', juz29PlanId:'none', juz30Certificates:[], juz29Certificates:[], ...s
-                    }));
+                    const migrated = data.students.map(s => {
+                        let tasks = s.listeningTasks || [];
+                        if (s.listeningTask) { tasks = [...tasks, s.listeningTask]; } // Migrate old single task format
+                        return {
+                            juz30Data:{}, juz29Data:{}, juz30PlanId:'none', juz29PlanId:'none', juz30Certificates:[], juz29Certificates:[], listeningTasks:tasks, ...s
+                        };
+                    });
                     setStudents(migrated);
                     if (isReadOnly) {
-                        const pin = localStorage.getItem('quran-parent-code')?.split('-')[1];
-                        const target = migrated.find(s => s.pin === pin);
-                        if (target) setCurrentId(target.id);
+                        const parentCode = localStorage.getItem('quran-parent-code');
+                        if (parentCode && parentCode.includes('-')) {
+                            const [firstName, pin] = parentCode.split('-');
+                            const target = migrated.find(s => s.name.trim().split(/\s+/)[0].toLowerCase() === firstName && s.pin === pin);
+                            if (target) setCurrentId(target.id);
+                        }
                     } else if (data.currentId && migrated.find(s => s.id === data.currentId)) {
                         setCurrentId(data.currentId);
                     }
@@ -1335,25 +1564,53 @@ function App() {
         if (key === MASTER_ADMIN_PASSWORD) {
             setIsAdminMode(true); setTempSyncKey(""); setShowSyncModal(false); setIsSaving(false); return;
         }
-        if (key.includes('-')) {
-            const [center, pin] = key.split('-');
-            try {
-                const snap = await getDoc(doc(db,'quran_centers',center));
-                if (snap.exists() && snap.data().students?.find(s => s.pin === pin)) {
-                    setIsDataLoaded(false); setIsReadOnly(true); setSyncKey(center);
-                    localStorage.setItem('quran-parent-code', key); setShowSyncModal(false);
-                } else { setDialog({ isOpen:true, type:'alert', message:t('parentCodeInvalid'), onConfirm:()=>setDialog({isOpen:false}) }); }
-            } catch(err) { setDialog({ isOpen:true, type:'alert', message:t('connError'), onConfirm:()=>setDialog({isOpen:false}) }); }
-            setIsSaving(false); return;
-        }
+
         try {
             const adminSnap = await getDoc(doc(db,'quran_centers','_admin_settings_'));
             const codes = adminSnap.exists() ? adminSnap.data().codes || [] : [];
+
+            if (key.includes('-')) {
+                const [firstName, pin] = key.split('-');
+                let foundTeacherCode = null;
+
+                for (const code of codes) {
+                    const snap = await getDoc(doc(db,'quran_centers', code));
+                    if (snap.exists()) {
+                        const studentsList = snap.data().students || [];
+                        const foundStudent = studentsList.find(s => 
+                            s.name.trim().split(/\s+/)[0].toLowerCase() === firstName && 
+                            s.pin === pin
+                        );
+                        if (foundStudent) {
+                            foundTeacherCode = code;
+                            break;
+                        }
+                    }
+                }
+
+                if (foundTeacherCode) {
+                    setIsDataLoaded(false); 
+                    setIsReadOnly(true); 
+                    setSyncKey(foundTeacherCode);
+                    localStorage.setItem('quran-student-sync-key', foundTeacherCode);
+                    localStorage.setItem('quran-parent-code', key); 
+                    setShowSyncModal(false);
+                } else { 
+                    setDialog({ isOpen:true, type:'alert', message:t('parentCodeInvalid'), onConfirm:()=>setDialog({isOpen:false}) }); 
+                }
+                setIsSaving(false); 
+                return;
+            }
+
             if (codes.includes(key)) {
                 setIsDataLoaded(false); setSyncKey(key);
                 localStorage.setItem('quran-sync-key', key); setShowSyncModal(false);
-            } else { setDialog({ isOpen:true, type:'alert', message:t('codeNotRegistered'), onConfirm:()=>setDialog({isOpen:false}) }); }
-        } catch(err) { setDialog({ isOpen:true, type:'alert', message:t('connError'), onConfirm:()=>setDialog({isOpen:false}) }); }
+            } else { 
+                setDialog({ isOpen:true, type:'alert', message:t('codeNotRegistered'), onConfirm:()=>setDialog({isOpen:false}) }); 
+            }
+        } catch(err) { 
+            setDialog({ isOpen:true, type:'alert', message:t('connError'), onConfirm:()=>setDialog({isOpen:false}) }); 
+        }
         setIsSaving(false);
     };
 
@@ -1374,7 +1631,9 @@ function App() {
 
     const handleLogout = () => {
         setIsDataLoaded(false); setSyncKey(""); setIsAdminMode(false); setIsReadOnly(false); setShowSyncModal(true);
-        localStorage.removeItem('quran-sync-key'); localStorage.removeItem('quran-parent-code');
+        localStorage.removeItem('quran-sync-key'); 
+        localStorage.removeItem('quran-parent-code');
+        localStorage.removeItem('quran-student-sync-key');
         setStudents([defaultStudent]); setCurrentId('1');
     };
 
@@ -1385,7 +1644,7 @@ function App() {
     useEffect(() => {
         if (isDataLoaded && !isReadOnly && !isAdminMode && syncKey && currentStudent && !currentStudent.pin && students.length > 0) {
             const newPin = Math.floor(1000 + Math.random() * 9000).toString();
-            saveToCloud(students.map(s => s.id===currentStudent.id ? { ...s, pin:newPin, planId:s.planId||'none', juz30Data:s.juz30Data||{}, juz29Data:s.juz29Data||{}, juz30PlanId:s.juz30PlanId||'none', juz29PlanId:s.juz29PlanId||'none' } : s), currentId);
+            saveToCloud(students.map(s => s.id===currentStudent.id ? { ...s, pin:newPin, planId:s.planId||'none', juz30Data:s.juz30Data||{}, juz29Data:s.juz29Data||{}, juz30PlanId:s.juz30PlanId||'none', juz29PlanId:s.juz29PlanId||'none', listeningTasks:s.listeningTasks||[] } : s), currentId);
         }
     }, [currentStudent, isReadOnly, isAdminMode, syncKey, students, isDataLoaded]);
 
@@ -1394,7 +1653,7 @@ function App() {
             if (name?.trim()) {
                 const nId = Date.now().toString();
                 const pin = Math.floor(1000 + Math.random() * 9000).toString();
-                saveToCloud([...students, { id:nId, name:name.trim(), progress:{}, revisions:{}, pin, certificates:[], planId:'none', juz30Data:{}, juz29Data:{}, juz30PlanId:'none', juz29PlanId:'none' }], nId);
+                saveToCloud([...students, { id:nId, name:name.trim(), progress:{}, revisions:{}, pin, certificates:[], planId:'none', juz30Data:{}, juz29Data:{}, juz30PlanId:'none', juz29PlanId:'none', listeningTasks:[] }], nId);
             }
             setDialog({ isOpen:false });
         }});
@@ -1453,13 +1712,10 @@ function App() {
         }});
     };
 
-    // Update juz data or plan for current student
     const handleJuzUpdate = (keyOrJuzKey, value) => {
-        // keyOrJuzKey can be 'juz30Data', 'juz29Data', 'juz30PlanId', 'juz29PlanId'
         saveToCloud(students.map(s => {
             if (s.id === currentId) {
                 let updatedStudent = { ...s, [keyOrJuzKey]: value };
-                // Cross-sync memorization to entire Quran progress
                 if (keyOrJuzKey === 'juz30Data' || keyOrJuzKey === 'juz29Data') {
                     let newProgress = { ...(s.progress || {}) };
                     Object.keys(value).forEach(surahId => {
@@ -1482,13 +1738,46 @@ function App() {
 
     const handleShare = () => {
         const pin = currentStudent.pin || "0000";
-        const parentCode = `${syncKey}-${pin}`;
-        const message = isAr
-            ? `السلام عليكم ورحمة الله،\n\nلمتابعة إنجاز وحفظ الطالب/ة: 🌟 ${currentStudent.name} 🌟\n\nيرجى الدخول إلى موقع المتتبع الذكي وإدخال كود المتابعة الخاص بكم:\n${parentCode}`
-            : `Peace be upon you,\n\nTo track the Quran memorization progress of: 🌟 ${currentStudent.name} 🌟\n\nPlease visit the Smart Tracker website and enter your tracking code:\n${parentCode}`;
-        if (!navigator.clipboard) { fallbackCopy(message); setDialog({ isOpen:true, type:'alert', message:t('linkCopied'), onConfirm:()=>setDialog({isOpen:false}) }); return; }
-        navigator.clipboard.writeText(message).then(() => setDialog({ isOpen:true, type:'alert', message:t('linkCopied'), onConfirm:()=>setDialog({isOpen:false}) }),
-            () => { fallbackCopy(message); setDialog({ isOpen:true, type:'alert', message:t('linkCopied'), onConfirm:()=>setDialog({isOpen:false}) }); });
+        const firstName = currentStudent.name.trim().split(/\s+/)[0].toLowerCase();
+        const studentCode = `${firstName}-${pin}`;
+        
+        if (!navigator.clipboard) { fallbackCopy(studentCode); setDialog({ isOpen:true, type:'alert', message:t('linkCopied'), onConfirm:()=>setDialog({isOpen:false}) }); return; }
+        navigator.clipboard.writeText(studentCode).then(() => setDialog({ isOpen:true, type:'alert', message:t('linkCopied'), onConfirm:()=>setDialog({isOpen:false}) }),
+            () => { fallbackCopy(studentCode); setDialog({ isOpen:true, type:'alert', message:t('linkCopied'), onConfirm:()=>setDialog({isOpen:false}) }); });
+    };
+
+    // HW Functions
+    const handleAssignHW = (task) => {
+        saveToCloud(students.map(s => s.id === currentId ? { ...s, listeningTasks: [...(s.listeningTasks || []), task] } : s), currentId);
+        setShowAssignHWModal(false);
+    };
+    const handleClearHW = (taskId) => {
+        saveToCloud(students.map(s => s.id === currentId ? { ...s, listeningTasks: (s.listeningTasks || []).filter(t => t.id !== taskId) } : s), currentId);
+    };
+    const handleHWComplete = (taskId) => {
+        const student = students.find(s => s.id === currentId);
+        if(student && student.listeningTasks) {
+             const updatedTasks = student.listeningTasks.map(t => t.id === taskId ? { ...t, completed: true } : t);
+             const fakeCloudCall = () => {
+                 setStudents(students.map(s => s.id === currentId ? { ...s, listeningTasks: updatedTasks } : s));
+                 if(db && syncKey && !isReadOnly) {
+                     setDoc(doc(db,'quran_centers',syncKey), { students: students.map(s => s.id === currentId ? { ...s, listeningTasks: updatedTasks } : s), currentId }, { merge:true });
+                 }
+             };
+             // Use API call manually to let student signal completion
+             if(isReadOnly && db && syncKey) {
+                 setDoc(doc(db,'quran_centers',syncKey), { students: students.map(s => s.id === currentId ? { ...s, listeningTasks: updatedTasks } : s), currentId }, { merge:true });
+                 setStudents(students.map(s => s.id === currentId ? { ...s, listeningTasks: updatedTasks } : s));
+             } else {
+                 fakeCloudCall();
+             }
+        }
+    };
+    const startAudioHW = (task) => {
+        const hwSurah = SURAHS_DATA.find(s => s.id === task.surahId);
+        if (hwSurah) {
+            setAudioPlayerSurah({ surah: hwSurah, hwTask: task });
+        }
     };
 
     const stats = useMemo(() => {
@@ -1497,6 +1786,7 @@ function App() {
         const p = ((total/TOTAL_QURAN_AYAHS)*100).toFixed(2);
         return { total, done, percentage:parseFloat(p), remaining:TOTAL_QURAN_AYAHS-total };
     }, [progress]);
+
     const getBadge = (p, l=lang, small=false) => {
         const curT = (k) => tDict[l][k]||k;
         const iconSize = small ? "text-lg sm:text-2xl" : "text-3xl sm:text-5xl";
@@ -1520,20 +1810,14 @@ function App() {
     const currentBadge = getBadge(stats.percentage);
     const currentPlan = MEMORIZATION_PLANS.find(p => p.id===(currentStudent.planId||'none'));
 
-    const issueCertificate = () => {
-        setShowCertWizard({ mode:'quran', certKey:'certificates', pct:stats.percentage, juzNum:null });
-    };
-
-    const issueJuzCertificate = (juzNum, certKey, pct) => {
-        setShowCertWizard({ mode:'juz', certKey, pct, juzNum });
-    };
+    const issueCertificate = () => setShowCertWizard({ mode:'quran', certKey:'certificates', pct:stats.percentage, juzNum:null });
+    const issueJuzCertificate = (juzNum, certKey, pct) => setShowCertWizard({ mode:'juz', certKey, pct, juzNum });
 
     const updateSurah = (sId, val) => {
         const num = Math.min(Math.max(0,val), SURAHS_DATA.find(s=>s.id===sId).totalAyahs);
         saveToCloud(students.map(s => {
             if (s.id === currentId) {
                 let updatedStudent = { ...s, progress: { ...s.progress, [sId]: num } };
-                // Cross-sync memorization to Juz sections
                 const numId = parseInt(sId);
                 if (JUZ30_IDS.includes(numId)) {
                     updatedStudent.juz30Data = { ...updatedStudent.juz30Data, [sId]: { ...(updatedStudent.juz30Data?.[sId] || {}), memorized: num } };
@@ -1676,6 +1960,22 @@ function App() {
     return (
         <div className="min-h-screen bg-slate-50 pb-20 pt-24 sm:pt-2" dir={isAr?'rtl':'ltr'}>
 
+            {/* ── Assign HW Modal ── */}
+            {showAssignHWModal && (
+                <AssignHWModal onClose={() => setShowAssignHWModal(false)} onSave={handleAssignHW} t={t} isAr={isAr} />
+            )}
+
+            {/* ── Audio Player Modal ── */}
+            {audioPlayerSurah && (
+                <AudioPlayerModal 
+                    surah={audioPlayerSurah.surah} 
+                    hwTask={audioPlayerSurah.hwTask}
+                    onHWComplete={() => handleHWComplete(audioPlayerSurah.hwTask.id)}
+                    onClose={() => setAudioPlayerSurah(null)} 
+                    t={t} isAr={isAr} 
+                />
+            )}
+
             {/* ── Unified Certificate Viewer ── */}
             {(selectedCert || selectedJuzCert) && (() => {
                 const isJuz = !!selectedJuzCert;
@@ -1728,11 +2028,9 @@ function App() {
                         <button type="button" onClick={toggleLang} className={`absolute top-4 ${isAr?'left-4':'right-4'} bg-green-100 hover:bg-green-200 text-green-800 px-3 py-1 rounded-lg text-sm font-bold flex items-center gap-1`}>
                             <i className="fas fa-globe"></i> {isAr?'EN':'عربي'}
                         </button>
-                        
-                        <div className="w-24 h-24 mx-auto rounded-full flex items-center justify-center border-4 border-yellow-400 bg-white shadow-md mb-4 mt-4">
-                            <span className="text-5xl">📖</span>
+                        <div className="w-24 h-24 mx-auto rounded-full border-4 border-yellow-400 bg-white shadow-md mb-4 mt-4 flex items-center justify-center text-green-800 text-4xl">
+                            <i className="fas fa-book-open"></i>
                         </div>
-                        
                         <h2 className="text-2xl font-bold text-green-900 mb-2">{t('welcomeCloud')}</h2>
                         <p className="text-gray-600 mb-6 text-sm">{t('enterCode')}</p>
                         <input type="text" autoFocus required placeholder={t('yourCode')} value={tempSyncKey} onChange={(e)=>setTempSyncKey(e.target.value)} className="w-full px-4 py-3 mb-6 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-700 text-center text-lg font-bold text-green-900 bg-green-50" dir="ltr" disabled={isSaving} />
@@ -1749,8 +2047,8 @@ function App() {
                         <div className="max-w-5xl mx-auto px-3 py-3 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
                             <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
                                 <div className="flex items-center gap-2 sm:gap-3">
-                                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border-2 border-yellow-400 bg-white shadow-sm shrink-0">
-                                        <span className="text-xl sm:text-2xl">📖</span>
+                                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-yellow-400 bg-white shadow-sm flex items-center justify-center text-green-800 text-xl sm:text-2xl">
+                                        <i className="fas fa-book-open"></i>
                                     </div>
                                     <div>
                                         <h1 className="text-lg sm:text-2xl font-bold text-white leading-tight">{isReadOnly ? t('parentPortal') : t('title')}</h1>
@@ -1800,9 +2098,40 @@ function App() {
                         </div>
                     </header>
 
+                    {/* Student HW Notification Banner (Only for ReadOnly/Student Portal) */}
+                    {isReadOnly && currentStudent.listeningTasks && currentStudent.listeningTasks.filter(t => !t.completed).length > 0 && (
+                        <div className="max-w-5xl mx-auto px-4 mt-4 space-y-3">
+                            {currentStudent.listeningTasks.filter(t => !t.completed).map(task => (
+                                <div key={task.id} className="w-full p-4 sm:px-6 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 border-2 shadow-sm animate-fade-in-up bg-purple-50 border-purple-200">
+                                    <div className="flex items-center gap-4 w-full sm:w-auto">
+                                        <div className="w-12 h-12 shrink-0 rounded-full flex items-center justify-center text-2xl bg-purple-200 text-purple-700 anim-bounce-soft">
+                                            <i className="fas fa-headphones-alt"></i>
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-lg leading-tight text-purple-800">
+                                                {t('newHWAlert')}
+                                            </h3>
+                                            <p className="text-sm mt-1 font-medium text-purple-600">
+                                                {t('surah')} {SURAHS_DATA.find(s=>s.id===task.surahId)?.[isAr?'name':'enName']} 
+                                                <span className="mx-1">•</span> 
+                                                {t('ayahs')} {task.fromAyah} - {task.toAyah} 
+                                                <span className="mx-1">•</span> 
+                                                {task.requiredRepeats} {t('times')}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="shrink-0 w-full sm:w-auto text-center">
+                                        <button onClick={() => startAudioHW(task)} className="w-full sm:w-auto bg-purple-600 hover:bg-purple-500 text-white px-6 py-2.5 rounded-xl font-bold shadow-md transition-colors">
+                                            {t('startHW')}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
                     {/* Stats bar — dynamic per active tab */}
                     {(() => {
-                        // Compute juz-specific stats when needed
                         const juz30Data = currentStudent.juz30Data || {};
                         const juz29Data = currentStudent.juz29Data || {};
                         const juz30Memorized = JUZ30_SURAHS.reduce((a,s) => a + (juz30Data[s.id]?.memorized||0), 0);
@@ -1812,18 +2141,16 @@ function App() {
                         const juz30Pct = parseFloat(((juz30Memorized / JUZ30_TOTAL_AYAHS)*100).toFixed(1));
                         const juz29Pct = parseFloat(((juz29Memorized / JUZ29_TOTAL_AYAHS)*100).toFixed(1));
 
-                        // Juz 30 plan ETA
                         const juz30Plan = JUZ_WEEKLY_PLANS.find(p => p.id===(currentStudent.juz30PlanId||'none')) || JUZ_WEEKLY_PLANS[0];
                         const juz29Plan = JUZ_WEEKLY_PLANS.find(p => p.id===(currentStudent.juz29PlanId||'none')) || JUZ_WEEKLY_PLANS[0];
                         const juz30Eta = juz30Plan.ayahsPerWeek > 0 ? formatJuzETA(JUZ30_TOTAL_AYAHS - juz30Memorized, juz30Plan.ayahsPerWeek, isAr) : null;
                         const juz29Eta = juz29Plan.ayahsPerWeek > 0 ? formatJuzETA(JUZ29_TOTAL_AYAHS - juz29Memorized, juz29Plan.ayahsPerWeek, isAr) : null;
 
                         if (activeTab === 'juz30') {
-                            // ── Juz 30 stats bar (dark green) ──
                             const currentBadgeJuz30 = getBadge(juz30Pct, lang, true);
                             
                             return (
-                                <div className="bg-gradient-to-r from-emerald-900 to-emerald-800 border-b-2 border-emerald-600 transition-all duration-300 relative z-20 shadow-md">
+                                <div className="bg-gradient-to-r from-emerald-900 to-emerald-800 border-b-2 border-emerald-600 transition-all duration-300 relative z-20 shadow-md mt-4">
                                     <div className="max-w-5xl mx-auto flex flex-row items-center justify-between p-2 gap-4">
                                         <div className="flex items-center gap-3 sm:gap-6 shrink-0">
                                             <div className="relative w-14 h-14 sm:w-20 sm:h-20 flex items-center justify-center shrink-0">
@@ -1848,13 +2175,17 @@ function App() {
                                             <div className="flex items-center gap-2 flex-wrap justify-end">
                                                 {!isReadOnly && <JuzPlanSelector juzNum={30} planId={currentStudent.juz30PlanId||'none'} onSetPlan={(id)=>handleJuzUpdate('juz30PlanId',id)} isReadOnly={isReadOnly} isAr={isAr} t={t} />}
                                                 {!isReadOnly && (
+                                                    <button onClick={() => setShowAssignHWModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[10px] sm:text-xs font-bold shadow-sm transition-colors">
+                                                        <i className="fas fa-headphones-alt"></i> <span className="hidden sm:inline">{t('assignHW')}</span>
+                                                    </button>
+                                                )}
+                                                {!isReadOnly && (
                                                     <button onClick={() => issueJuzCertificate(30, 'juz30Certificates', juz30Pct)}
                                                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-emerald-900 text-[10px] sm:text-xs font-bold shadow-sm transition-colors">
                                                         <i className="fas fa-certificate"></i> <span className="hidden sm:inline">{t('juzIssueCert')}</span>
                                                     </button>
                                                 )}
                                             </div>
-                                            {/* mini bar */}
                                             <div className="w-32 sm:w-48">
                                                 <div className="w-full bg-black/20 rounded-full h-2 overflow-hidden">
                                                     <div className="h-full rounded-full bg-yellow-400 transition-all duration-700" style={{width:`${juz30Pct}%`}} />
@@ -1874,11 +2205,10 @@ function App() {
                         }
 
                         if (activeTab === 'juz29') {
-                            // ── Juz 29 stats bar (dark amber/gold) ──
                             const currentBadgeJuz29 = getBadge(juz29Pct, lang, true);
 
                             return (
-                                <div className="bg-gradient-to-r from-amber-800 to-amber-700 border-b-2 border-amber-600 transition-all duration-300 relative z-20 shadow-md">
+                                <div className="bg-gradient-to-r from-amber-800 to-amber-700 border-b-2 border-amber-600 transition-all duration-300 relative z-20 shadow-md mt-4">
                                     <div className="max-w-5xl mx-auto flex flex-row items-center justify-between p-2 gap-4">
                                         <div className="flex items-center gap-3 sm:gap-6 shrink-0">
                                             <div className="relative w-14 h-14 sm:w-20 sm:h-20 flex items-center justify-center shrink-0">
@@ -1903,13 +2233,17 @@ function App() {
                                             <div className="flex items-center gap-2 flex-wrap justify-end">
                                                 {!isReadOnly && <JuzPlanSelector juzNum={29} planId={currentStudent.juz29PlanId||'none'} onSetPlan={(id)=>handleJuzUpdate('juz29PlanId',id)} isReadOnly={isReadOnly} isAr={isAr} t={t} />}
                                                 {!isReadOnly && (
+                                                    <button onClick={() => setShowAssignHWModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[10px] sm:text-xs font-bold shadow-sm transition-colors">
+                                                        <i className="fas fa-headphones-alt"></i> <span className="hidden sm:inline">{t('assignHW')}</span>
+                                                    </button>
+                                                )}
+                                                {!isReadOnly && (
                                                     <button onClick={() => issueJuzCertificate(29, 'juz29Certificates', juz29Pct)}
                                                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-amber-900 text-[10px] sm:text-xs font-bold shadow-sm transition-colors">
                                                         <i className="fas fa-certificate"></i> <span className="hidden sm:inline">{t('juzIssueCert')}</span>
                                                     </button>
                                                 )}
                                             </div>
-                                            {/* mini bar */}
                                             <div className="w-32 sm:w-48">
                                                 <div className="w-full bg-black/20 rounded-full h-2 overflow-hidden">
                                                     <div className="h-full rounded-full bg-yellow-300 transition-all duration-700" style={{width:`${juz29Pct}%`}} />
@@ -1928,11 +2262,10 @@ function App() {
                             );
                         }
 
-                        // ── Default: Full Quran stats bar (white/green) ──
                         const currentBadgeFull = getBadge(stats.percentage, lang, true);
                         
                         return (
-                            <div className="bg-white/95 backdrop-blur-md border-b-2 border-green-200 transition-all duration-300 relative z-20">
+                            <div className="bg-white/95 backdrop-blur-md border-b-2 border-green-200 transition-all duration-300 relative z-20 mt-4">
                                 <div className="max-w-5xl mx-auto flex flex-row items-center justify-between p-2 gap-4">
                                     <div className="flex items-center gap-3 sm:gap-6 shrink-0">
                                         <div className="relative w-14 h-14 sm:w-20 sm:h-20 flex items-center justify-center shrink-0">
@@ -1961,12 +2294,16 @@ function App() {
                                                 />
                                             )}
                                             {!isReadOnly && (
+                                                <button onClick={() => setShowAssignHWModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[10px] sm:text-xs font-bold shadow-sm transition-colors">
+                                                    <i className="fas fa-headphones-alt"></i> <span className="hidden sm:inline">{t('assignHW')}</span>
+                                                </button>
+                                            )}
+                                            {!isReadOnly && (
                                                 <button onClick={()=>setShowCertWizard({mode:'quran',certKey:'certificates',pct:stats.percentage,juzNum:null})} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-green-900 text-[10px] sm:text-xs font-bold shadow-sm transition-colors">
                                                     <i className="fas fa-certificate"></i> <span className="hidden sm:inline">{t('issueCert')}</span>
                                                 </button>
                                             )}
                                         </div>
-                                        {/* mini bar */}
                                         <div className="w-32 sm:w-48">
                                             <div className="w-full bg-green-100 rounded-full h-2 overflow-hidden">
                                                 <div className="h-full rounded-full bg-green-500 transition-all duration-700" style={{width:`${stats.percentage}%`}} />
@@ -2049,7 +2386,7 @@ function App() {
                             onUpdate={handleJuzUpdate} isReadOnly={isReadOnly} isAr={isAr} t={t}
                             onIssueCert={issueJuzCertificate}
                             onViewCert={(cert, juzNum) => setSelectedJuzCert({ cert, juzNum })}
-                            getBadge={getBadge} lang={lang} onReset={() => resetSectionData('juz30')} />
+                            getBadge={getBadge} lang={lang} onReset={() => resetSectionData('juz30')} onPlayAudio={(obj) => setAudioPlayerSurah(obj)} onClearHW={handleClearHW} />
                     )}
 
                     {/* JUZ 29 TAB */}
@@ -2058,12 +2395,20 @@ function App() {
                             onUpdate={handleJuzUpdate} isReadOnly={isReadOnly} isAr={isAr} t={t}
                             onIssueCert={issueJuzCertificate}
                             onViewCert={(cert, juzNum) => setSelectedJuzCert({ cert, juzNum })}
-                            getBadge={getBadge} lang={lang} onReset={() => resetSectionData('juz29')} />
+                            getBadge={getBadge} lang={lang} onReset={() => resetSectionData('juz29')} onPlayAudio={(obj) => setAudioPlayerSurah(obj)} onClearHW={handleClearHW} />
                     )}
 
                     {/* MAIN QURAN TAB */}
                     {activeTab === 'main' && (
                         <>
+                            {!isReadOnly && currentStudent.listeningTasks && currentStudent.listeningTasks.length > 0 && (
+                                <div className="space-y-3 mb-6">
+                                    {currentStudent.listeningTasks.map(task => (
+                                        <TeacherHWAlert key={task.id} task={task} onClear={() => handleClearHW(task.id)} isAr={isAr} t={t} />
+                                    ))}
+                                </div>
+                            )}
+
                             {/* Student report */}
                             <section className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
                                 <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-slate-800"><i className="fas fa-chart-pie text-green-600 text-xl"></i> {t('studentReport')}</h3>
@@ -2177,6 +2522,9 @@ function App() {
                                                     <div className="flex items-center gap-2">
                                                         <span className="flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-500 text-xs font-bold shadow-inner">{surah.id}</span>
                                                         <h3 className="text-lg font-bold text-slate-800">{t('surah')} {isAr?surah.name:surah.enName} <br/><span className="text-sm font-normal text-slate-400 mt-0.5">{isAr?surah.enName:surah.enMeaning}</span></h3>
+                                                        <button onClick={() => setAudioPlayerSurah({ surah, hwTask: null })} className="text-green-500 hover:text-green-700 bg-green-50 hover:bg-green-100 w-6 h-6 rounded-full flex items-center justify-center transition-colors" title={t('listenSurah')}>
+                                                            <i className="fas fa-headphones-alt text-xs"></i>
+                                                        </button>
                                                     </div>
                                                     <p className="text-sm text-slate-500 mt-2">{t('ayahs')} {surah.totalAyahs}</p>
                                                 </div>
