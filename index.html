@@ -108,6 +108,12 @@ const myFirebaseConfig = {
 };
 const MASTER_ADMIN_PASSWORD = "admin";
 
+// Code Obfuscation Maps (Hides teacher code from students to prevent unauthorized teacher access)
+const SCRAMBLE_MAP = {'a':'q','b':'w','c':'e','d':'r','e':'t','f':'y','g':'u','h':'i','i':'o','j':'p','k':'a','l':'s','m':'d','n':'f','o':'g','p':'h','q':'j','r':'k','s':'l','t':'z','u':'x','v':'c','w':'v','x':'b','y':'n','z':'m','0':'9','1':'8','2':'7','3':'6','4':'5','5':'4','6':'3','7':'2','8':'1','9':'0'};
+const UNSCRAMBLE_MAP = Object.entries(SCRAMBLE_MAP).reduce((acc, [k,v]) => { acc[v]=k; return acc; }, {});
+const scramble = (str) => str.split('').map(c => SCRAMBLE_MAP[c] || c).join('');
+const unscramble = (str) => str.split('').map(c => UNSCRAMBLE_MAP[c] || c).join('');
+
 let app, db;
 try { app = initializeApp(myFirebaseConfig); db = getFirestore(app); } catch(e) { console.error("Firebase Init Error", e); }
 
@@ -265,7 +271,8 @@ const tDict = {
         assignHW:"تعيين واجب", assignHWTitle:"تعيين واجب استماع", hwRepetitions:"عدد مرات التكرار",
         hwPending:"تكليف الطالب ⏳", hwCompleted:"تم إنجاز الواجب ✅", clearHW:"إلغاء الواجب",
         newHWAlert:"🎧 لديك واجب استماع جديد!", startHW:"ابدأ الواجب", hwProgress:"تقدم الواجب",
-        times:"مرات", saveHW:"حفظ الواجب"
+        times:"مرات", saveHW:"حفظ الواجب",
+        readOnlyWarning:"أنتِ الآن في (بوابة الطالب). لعرض قائمة الفصل كاملة، قومي بتسجيل الخروج والدخول بكود المعلم."
     },
     en: {
         title:"Smart Quran Tracker",welcomeCloud:"Welcome to Smart Quran Tracker",
@@ -358,7 +365,8 @@ const tDict = {
         assignHW:"Assign HW", assignHWTitle:"Assign Listening HW", hwRepetitions:"Repetitions",
         hwPending:"Pending ⏳", hwCompleted:"Completed ✅", clearHW:"Clear HW",
         newHWAlert:"🎧 You have a new listening assignment!", startHW:"Start HW", hwProgress:"HW Progress",
-        times:"times", saveHW:"Save HW"
+        times:"times", saveHW:"Save HW",
+        readOnlyWarning:"You are viewing a single Student's Portal. To view the entire class, log out and enter your Teacher Code."
     }
 };
 
@@ -1494,6 +1502,7 @@ function App() {
     const [audioPlayerSurah, setAudioPlayerSurah] = useState(null);
     const [showAssignHWModal, setShowAssignHWModal] = useState(false);
 
+    // Auto-login effect for both teacher and parent modes
     useEffect(() => {
         if (!db || !syncKey || isAdminMode) return;
         setIsDataLoaded(false);
@@ -1513,8 +1522,23 @@ function App() {
                     if (isReadOnly) {
                         const parentCode = localStorage.getItem('quran-parent-code');
                         if (parentCode && parentCode.includes('-')) {
-                            const [firstName, pin] = parentCode.split('-');
-                            const target = migrated.find(s => s.name.trim().split(/\s+/)[0].toLowerCase() === firstName && s.pin === pin);
+                            const parts = parentCode.split('-');
+                            const pin = parts.pop().trim();
+                            
+                            let rawName = "";
+                            if (parts.length >= 2) {
+                                rawName = parts.pop().trim(); // Extract name part from fast-path format
+                            } else {
+                                rawName = parts[0].trim(); // Legacy format
+                            }
+
+                            const normalizeAr = (text) => text ? text.toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي') : "";
+                            const firstName = normalizeAr(rawName.split(/\s+/)[0]);
+
+                            const target = migrated.find(s => {
+                                const dbFirstName = s.name.trim().split(/\s+/)[0];
+                                return normalizeAr(dbFirstName) === firstName && s.pin === pin;
+                            });
                             if (target) setCurrentId(target.id);
                         }
                     } else if (data.currentId && migrated.find(s => s.id === data.currentId)) {
@@ -1558,37 +1582,115 @@ function App() {
 
     const handleSetSyncKey = async (e) => {
         e.preventDefault();
-        const key = tempSyncKey.trim().toLowerCase();
+        
+        let key = tempSyncKey.trim().toLowerCase();
+        
+        // Convert any Eastern Arabic digits to standard ones just in case the parent types using an Arabic keyboard
+        key = key.replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d))
+                 .replace(/[۰-۹]/g, d => "۰۱۲۳۴۵۶۷۸۹".indexOf(d));
+                 
         if (!key) return;
         setIsSaving(true);
+        
         if (key === MASTER_ADMIN_PASSWORD) {
             setIsAdminMode(true); setTempSyncKey(""); setShowSyncModal(false); setIsSaving(false); return;
         }
+
+        // Helper to normalize Arabic text
+        const normalizeAr = (text) => {
+            if (!text) return "";
+            return text.toLowerCase()
+                .replace(/[أإآ]/g, 'ا')
+                .replace(/ة/g, 'ه')
+                .replace(/ى/g, 'ي');
+        };
 
         try {
             const adminSnap = await getDoc(doc(db,'quran_centers','_admin_settings_'));
             const codes = adminSnap.exists() ? adminSnap.data().codes || [] : [];
 
-            if (key.includes('-')) {
-                const [firstName, pin] = key.split('-');
-                let foundTeacherCode = null;
+            // 1. Is it a direct Teacher Code?
+            if (codes.includes(key)) {
+                setIsDataLoaded(false); setSyncKey(key);
+                localStorage.setItem('quran-sync-key', key); setShowSyncModal(false);
+                setIsSaving(false);
+                return;
+            }
 
-                for (const code of codes) {
-                    const snap = await getDoc(doc(db,'quran_centers', code));
-                    if (snap.exists()) {
-                        const studentsList = snap.data().students || [];
-                        const foundStudent = studentsList.find(s => 
-                            s.name.trim().split(/\s+/)[0].toLowerCase() === firstName && 
-                            s.pin === pin
-                        );
-                        if (foundStudent) {
-                            foundTeacherCode = code;
-                            break;
+            // 2. Is it a Student Code?
+            if (key.includes('-')) {
+                let foundTeacherCode = null;
+                let foundStudent = null;
+
+                const parts = key.split('-');
+                const pin = parts.pop(); 
+                
+                // FAST PATH Logic
+                if (parts.length >= 2) {
+                    const namePart = parts.pop(); // Pop off the name part
+                    const prefixPart = parts.join('-'); // The rest is the secret prefix
+                    const unscrambledPrefix = unscramble(prefixPart); // Decode it
+                    const normalizedInputName = normalizeAr(namePart);
+
+                    // Check Fast Path 1: It is a scrambled teacher code
+                    if (codes.includes(unscrambledPrefix)) {
+                        const snap = await getDoc(doc(db, 'quran_centers', unscrambledPrefix));
+                        if (snap.exists()) {
+                            foundStudent = (snap.data().students || []).find(s => {
+                                const dbFirstName = s.name.trim().split(/\s+/)[0];
+                                return normalizeAr(dbFirstName) === normalizedInputName && s.pin === pin;
+                            });
+                            if (foundStudent) foundTeacherCode = unscrambledPrefix;
+                        }
+                    } 
+                    // Check Fast Path 2: It is a raw teacher code (from yesterday's version)
+                    else if (!foundTeacherCode && codes.includes(prefixPart)) {
+                        const snap = await getDoc(doc(db, 'quran_centers', prefixPart));
+                        if (snap.exists()) {
+                            foundStudent = (snap.data().students || []).find(s => {
+                                const dbFirstName = s.name.trim().split(/\s+/)[0];
+                                return normalizeAr(dbFirstName) === normalizedInputName && s.pin === pin;
+                            });
+                            if (foundStudent) foundTeacherCode = prefixPart;
                         }
                     }
                 }
 
-                if (foundTeacherCode) {
+                // SLOW PATH: Extreme legacy "ahmad-1234" format
+                // We batch the requests so it doesn't crash the browser
+                if (!foundTeacherCode) {
+                    const origParts = key.split('-');
+                    origParts.pop(); // remove pin
+                    const studentNameStr = origParts.join('-'); // The rest is the name
+                    const normalizedInputName = normalizeAr(studentNameStr.split(/\s+/)[0]);
+
+                    if (normalizedInputName) {
+                        const batchSize = 10; 
+                        for (let i = 0; i < codes.length; i += batchSize) {
+                            const batch = codes.slice(i, i + batchSize);
+                            const batchPromises = batch.map(code => getDoc(doc(db, 'quran_centers', code)).then(snap => ({ code, snap })).catch(() => null));
+                            const results = await Promise.all(batchPromises);
+                            
+                            for (const result of results) {
+                                if (result && result.snap.exists()) {
+                                    const studentsList = result.snap.data().students || [];
+                                    foundStudent = studentsList.find(s => {
+                                        const dbFirstName = s.name.trim().split(/\s+/)[0];
+                                        return normalizeAr(dbFirstName) === normalizedInputName && s.pin === pin;
+                                    });
+                                    if (foundStudent) {
+                                        foundTeacherCode = result.code;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (foundTeacherCode) break; 
+                        }
+                    }
+                }
+
+                // Final Login Resolution
+                if (foundTeacherCode && foundStudent) {
                     setIsDataLoaded(false); 
                     setIsReadOnly(true); 
                     setSyncKey(foundTeacherCode);
@@ -1598,17 +1700,11 @@ function App() {
                 } else { 
                     setDialog({ isOpen:true, type:'alert', message:t('parentCodeInvalid'), onConfirm:()=>setDialog({isOpen:false}) }); 
                 }
-                setIsSaving(false); 
-                return;
-            }
-
-            if (codes.includes(key)) {
-                setIsDataLoaded(false); setSyncKey(key);
-                localStorage.setItem('quran-sync-key', key); setShowSyncModal(false);
-            } else { 
+            } else {
                 setDialog({ isOpen:true, type:'alert', message:t('codeNotRegistered'), onConfirm:()=>setDialog({isOpen:false}) }); 
             }
         } catch(err) { 
+            console.error("Login verification error:", err);
             setDialog({ isOpen:true, type:'alert', message:t('connError'), onConfirm:()=>setDialog({isOpen:false}) }); 
         }
         setIsSaving(false);
@@ -1731,19 +1827,43 @@ function App() {
         }), currentId);
     };
 
-    const fallbackCopy = (text) => {
-        const ta = document.createElement("textarea"); ta.value=text; ta.style.position="fixed"; ta.style.top="0"; ta.style.left="0";
-        document.body.appendChild(ta); ta.focus(); ta.select(); try { document.execCommand('copy'); } catch(err) {} document.body.removeChild(ta);
-    };
-
     const handleShare = () => {
         const pin = currentStudent.pin || "0000";
         const firstName = currentStudent.name.trim().split(/\s+/)[0].toLowerCase();
-        const studentCode = `${firstName}-${pin}`;
         
-        if (!navigator.clipboard) { fallbackCopy(studentCode); setDialog({ isOpen:true, type:'alert', message:t('linkCopied'), onConfirm:()=>setDialog({isOpen:false}) }); return; }
-        navigator.clipboard.writeText(studentCode).then(() => setDialog({ isOpen:true, type:'alert', message:t('linkCopied'), onConfirm:()=>setDialog({isOpen:false}) }),
-            () => { fallbackCopy(studentCode); setDialog({ isOpen:true, type:'alert', message:t('linkCopied'), onConfirm:()=>setDialog({isOpen:false}) }); });
+        // Use Scrambler to hide the teacher code from the student
+        const scrambledTeacherCode = scramble(syncKey);
+        const studentCode = `${scrambledTeacherCode}-${firstName}-${pin}`;
+        
+        let copied = false;
+        // Synchronous fallback (most reliable in embedded browser environments)
+        try {
+            const ta = document.createElement("textarea");
+            ta.value = studentCode;
+            ta.style.position = "fixed";
+            ta.style.top = "0";
+            ta.style.left = "0";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            copied = document.execCommand('copy');
+            document.body.removeChild(ta);
+        } catch(err) {
+            copied = false;
+        }
+
+        const successMsg = `${t('linkCopied')}\n\n[ ${studentCode} ]`;
+
+        // Async modern API if available and fallback failed
+        if (!copied && navigator.clipboard) {
+            navigator.clipboard.writeText(studentCode).then(
+                () => setDialog({ isOpen:true, type:'alert', message: successMsg, onConfirm:()=>setDialog({isOpen:false}) }),
+                () => setDialog({ isOpen:true, type:'alert', message: `الكود الخاص بالطالب:\n\n[ ${studentCode} ]\n\n(فشل النسخ التلقائي، يرجى تحديده ونسخه يدوياً)`, onConfirm:()=>setDialog({isOpen:false}) })
+            );
+        } else {
+             setDialog({ isOpen:true, type:'alert', message: successMsg, onConfirm:()=>setDialog({isOpen:false}) });
+        }
     };
 
     // HW Functions
@@ -2097,6 +2217,14 @@ function App() {
                             </div>
                         </div>
                     </header>
+
+                    {/* Safety Banner for Teachers in Parent Mode */}
+                    {isReadOnly && (
+                        <div className="bg-blue-600 text-blue-50 px-4 py-2.5 text-center text-xs sm:text-sm font-bold shadow-inner flex items-center justify-center gap-2">
+                            <i className="fas fa-info-circle text-blue-300 text-lg"></i>
+                            <span>{t('readOnlyWarning')}</span>
+                        </div>
+                    )}
 
                     {/* Student HW Notification Banner (Only for ReadOnly/Student Portal) */}
                     {isReadOnly && currentStudent.listeningTasks && currentStudent.listeningTasks.filter(t => !t.completed).length > 0 && (
@@ -2629,8 +2757,10 @@ function App() {
             {/* Dialog */}
             {dialog.isOpen && (
                 <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl">
-                        <p className="font-bold mb-6 text-slate-800 text-lg">{dialog.message}</p>
+                    <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl text-center">
+                        <p className="font-bold mb-6 text-slate-800 text-lg whitespace-pre-wrap leading-relaxed" style={{ direction: 'ltr' }}>
+                            {dialog.message}
+                        </p>
                         {dialog.type==='prompt' && (
                             <input type="text" autoFocus defaultValue={dialog.defaultValue} id="dialogInput" className="w-full px-4 py-3 mb-6 border border-slate-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none" onKeyDown={(e)=>{if(e.key==='Enter') dialog.onConfirm(document.getElementById('dialogInput').value);}} />
                         )}
@@ -2646,13 +2776,13 @@ function App() {
                                 <button onClick={()=>setDialog({isOpen:false})} className="text-slate-500 py-2 hover:text-slate-800 font-medium">{t('cancel')}</button>
                             </div>
                         ) : (
-                            <div className={`flex gap-3 mt-4 ${isAr?'justify-end':'justify-start'}`}>
-                                {dialog.type!=='alert' && <button onClick={()=>setDialog({isOpen:false})} className="px-5 py-2.5 bg-slate-100 rounded-xl text-slate-600 font-bold hover:bg-slate-200">{t('cancel')}</button>}
+                            <div className={`flex gap-3 mt-4 justify-center`}>
+                                {dialog.type!=='alert' && <button onClick={()=>setDialog({...dialog,isOpen:false})} className="px-5 py-2.5 bg-slate-100 rounded-xl text-slate-600 font-bold hover:bg-slate-200">{t('cancel')}</button>}
                                 <button onClick={()=>{
                                     if(dialog.type==='prompt') dialog.onConfirm(document.getElementById('dialogInput').value);
                                     else if(dialog.type==='planSelect') dialog.onConfirm(document.getElementById('planSelectInput').value);
                                     else dialog.onConfirm();
-                                }} className="px-5 py-2.5 bg-green-900 text-white rounded-xl font-bold hover:bg-green-800 shadow-sm">{t('confirm')}</button>
+                                }} className="px-5 py-2.5 w-full bg-green-900 text-white rounded-xl font-bold hover:bg-green-800 shadow-sm">{t('confirm')}</button>
                             </div>
                         )}
                     </div>
