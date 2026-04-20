@@ -96,7 +96,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'https://esm.sh/react@18.2.0';
 import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, getDocFromServer } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const myFirebaseConfig = {
     apiKey: "AIzaSyDZhjFkUE9KP8wNH01cG75kMIydCxKlZv8",
@@ -108,20 +108,14 @@ const myFirebaseConfig = {
 };
 const MASTER_ADMIN_PASSWORD = "admin";
 
-// Code Obfuscation Maps (Hides teacher code from students to prevent unauthorized teacher access)
-const SCRAMBLE_MAP = {'a':'q','b':'w','c':'e','d':'r','e':'t','f':'y','g':'u','h':'i','i':'o','j':'p','k':'a','l':'s','m':'d','n':'f','o':'g','p':'h','q':'j','r':'k','s':'l','t':'z','u':'x','v':'c','w':'v','x':'b','y':'n','z':'m','0':'9','1':'8','2':'7','3':'6','4':'5','5':'4','6':'3','7':'2','8':'1','9':'0'};
-const UNSCRAMBLE_MAP = Object.entries(SCRAMBLE_MAP).reduce((acc, [k,v]) => { acc[v]=k; return acc; }, {});
-const scramble = (str) => str.split('').map(c => SCRAMBLE_MAP[c] || c).join('');
-const unscramble = (str) => str.split('').map(c => UNSCRAMBLE_MAP[c] || c).join('');
-
 let app, db;
 try { app = initializeApp(myFirebaseConfig); db = getFirestore(app); } catch(e) { console.error("Firebase Init Error", e); }
 
 const TOTAL_QURAN_AYAHS = 6236;
 
 const STICKER_SETS = {
-    stars:    ['⭐','🌟','💫','✨','🌠','🌙','☀️','🌈','⚡','🔥'],
-    animals:  ['🦁','🐯','🦅','🐬','🦋','🦜','🐠','🦒','🐘','🦓','🐸','🐙','🦊','🐧','🦄'],
+    stars:    ['⭐','🌟','💫','✨','🌠','🌙','☀️','⚡','🔥'],
+    animals:  ['🦁','🐯','🦅','🐬','🦋','🦜','🐠','🦒','🐘','🦓','🐸','🐙','🦊','🐧','🐢'],
     nature:   ['🌺','🌸','🌻','🌴','🍀','🍉','🍓','🌊','🏔️','🌿','🌵','🌾','🍁','🌷','🌹'],
     trophies: ['🏆','🥇','🎖️','🎗️','🏅','🎯','🎉','🎊','🎁','🎀','👑','💎','🔮','🪄','🧿'],
     hearts:   ['❤️','💚','💛','💜','💙','🧡','💗','💖','💝','💞','💓','💟','🫶','🤍','🖤'],
@@ -130,23 +124,23 @@ const STICKER_SETS = {
 const ALL_STICKERS = [...new Set(Object.values(STICKER_SETS).flat())];
 
 const MEMORIZATION_PLANS = [
-    { id: 'none', arTitle: 'بدون خطة محددة', enTitle: 'No specific plan', days: 0, arTarget: '', enTarget: '' },
-    { id: 'p_0.5', arTitle: 'نصف صفحة (٥ أيام/أسبوع)', enTitle: 'Half page (5 days/week)', days: 1691, arTarget: 'نصف صفحة حفظ + يومان مراجعة', enTarget: 'Half page + 2 days revision' },
-    { id: 'p_1', arTitle: 'صفحة يومياً (٥ أيام/أسبوع)', enTitle: '1 Page (5 days/week)', days: 846, arTarget: 'صفحة حفظ + يومان مراجعة', enTarget: '1 Page + 2 days revision' },
-    { id: 'p_2', arTitle: 'صفحتان يومياً (٥ أيام/أسبوع)', enTitle: '2 Pages (5 days/week)', days: 423, arTarget: 'صفحتان حفظ + يومان مراجعة', enTarget: '2 Pages + 2 days revision' },
-    { id: 'p_5', arTitle: '5 صفحات مكثف (٥ أيام/أسبوع)', enTitle: '5 Pages (5 days/week)', days: 169, arTarget: '5 صفحات حفظ + يومان مراجعة', enTarget: '5 Pages + 2 days revision' },
-    { id: 'r_0.5', arTitle: 'نصف ربع يومياً (٥ أيام/أسبوع)', enTitle: 'Half Rub\' (5 days/week)', days: 672, arTarget: 'نصف ربع حفظ + يومان مراجعة', enTarget: 'Half Rub\' + 2 days revision' },
-    { id: 'r_1', arTitle: 'ربع حزب يومياً (٥ أيام/أسبوع)', enTitle: '1 Rub\' (5 days/week)', days: 336, arTarget: 'ربع حزب حفظ + يومان مراجعة', enTarget: '1 Rub\' + 2 days revision' },
-    { id: 'r_2', arTitle: 'نصف حزب يومياً (٥ أيام/أسبوع)', enTitle: 'Half Hezb (5 days/week)', days: 168, arTarget: 'نصف حزب حفظ + يومان مراجعة', enTarget: 'Half Hezb + 2 days revision' }
+    { id: 'none', arTitle: 'بدون خطة محددة', enTitle: 'No specific plan', frTitle: 'Aucun plan défini', deTitle: 'Kein fester Plan', esTitle: 'Sin plan específico', idTitle: 'Tanpa rencana tertentu', days: 0, arTarget: '', enTarget: '', frTarget: '', deTarget: '', esTarget: '', idTarget: '' },
+    { id: 'p_0.5', arTitle: 'نصف صفحة (٥ أيام/أسبوع)', enTitle: 'Half page (5 days/week)', frTitle: 'Demi-page (5 j./sem.)', deTitle: 'Halbe Seite (5 T./Woche)', esTitle: 'Media página (5 días/sem.)', idTitle: 'Setengah halaman (5 hari/minggu)', days: 1691, arTarget: 'نصف صفحة حفظ + يومان مراجعة', enTarget: 'Half page + 2 days revision', frTarget: 'Demi-page + 2 jours de révision', deTarget: 'Halbe Seite + 2 Tage Wiederholung', esTarget: 'Media página + 2 días de repaso', idTarget: 'Setengah halaman + 2 hari murajaah' },
+    { id: 'p_1', arTitle: 'صفحة يومياً (٥ أيام/أسبوع)', enTitle: '1 Page (5 days/week)', frTitle: '1 page (5 j./sem.)', deTitle: '1 Seite (5 T./Woche)', esTitle: '1 página (5 días/sem.)', idTitle: '1 halaman (5 hari/minggu)', days: 846, arTarget: 'صفحة حفظ + يومان مراجعة', enTarget: '1 Page + 2 days revision', frTarget: '1 page + 2 jours de révision', deTarget: '1 Seite + 2 Tage Wiederholung', esTarget: '1 página + 2 días de repaso', idTarget: '1 halaman + 2 hari murajaah' },
+    { id: 'p_2', arTitle: 'صفحتان يومياً (٥ أيام/أسبوع)', enTitle: '2 Pages (5 days/week)', frTitle: '2 pages (5 j./sem.)', deTitle: '2 Seiten (5 T./Woche)', esTitle: '2 páginas (5 días/sem.)', idTitle: '2 halaman (5 hari/minggu)', days: 423, arTarget: 'صفحتان حفظ + يومان مراجعة', enTarget: '2 Pages + 2 days revision', frTarget: '2 pages + 2 jours de révision', deTarget: '2 Seiten + 2 Tage Wiederholung', esTarget: '2 páginas + 2 días de repaso', idTarget: '2 halaman + 2 hari murajaah' },
+    { id: 'p_5', arTitle: '5 صفحات مكثف (٥ أيام/أسبوع)', enTitle: '5 Pages (5 days/week)', frTitle: '5 pages (5 j./sem.)', deTitle: '5 Seiten (5 T./Woche)', esTitle: '5 páginas (5 días/sem.)', idTitle: '5 halaman (5 hari/minggu)', days: 169, arTarget: '5 صفحات حفظ + يومان مراجعة', enTarget: '5 Pages + 2 days revision', frTarget: '5 pages + 2 jours de révision', deTarget: '5 Seiten + 2 Tage Wiederholung', esTarget: '5 páginas + 2 días de repaso', idTarget: '5 halaman + 2 hari murajaah' },
+    { id: 'r_0.5', arTitle: 'نصف ربع يومياً (٥ أيام/أسبوع)', enTitle: 'Half Rub\' (5 days/week)', frTitle: 'Demi rub\' (5 j./sem.)', deTitle: 'Halbes Rub\' (5 T./Woche)', esTitle: 'Medio rub\' (5 días/sem.)', idTitle: 'Setengah rub\' (5 hari/minggu)', days: 672, arTarget: 'نصف ربع حفظ + يومان مراجعة', enTarget: 'Half Rub\' + 2 days revision', frTarget: 'Demi rub\' + 2 jours de révision', deTarget: 'Halbes Rub\' + 2 Tage Wiederholung', esTarget: 'Medio rub\' + 2 días de repaso', idTarget: 'Setengah rub\' + 2 hari murajaah' },
+    { id: 'r_1', arTitle: 'ربع حزب يومياً (٥ أيام/أسبوع)', enTitle: '1 Rub\' (5 days/week)', frTitle: '1 rub\' (5 j./sem.)', deTitle: '1 Rub\' (5 T./Woche)', esTitle: '1 rub\' (5 días/sem.)', idTitle: '1 rub\' (5 hari/minggu)', days: 336, arTarget: 'ربع حزب حفظ + يومان مراجعة', enTarget: '1 Rub\' + 2 days revision', frTarget: '1 rub\' + 2 jours de révision', deTarget: '1 Rub\' + 2 Tage Wiederholung', esTarget: '1 rub\' + 2 días de repaso', idTarget: '1 rub\' + 2 hari murajaah' },
+    { id: 'r_2', arTitle: 'نصف حزب يومياً (٥ أيام/أسبوع)', enTitle: 'Half Hezb (5 days/week)', frTitle: 'Demi hizb (5 j./sem.)', deTitle: 'Halber Hizb (5 T./Woche)', esTitle: 'Medio hizb (5 días/sem.)', idTitle: 'Setengah hizb (5 hari/minggu)', days: 168, arTarget: 'نصف حزب حفظ + يومان مراجعة', enTarget: 'Half Hezb + 2 days revision', frTarget: 'Demi hizb + 2 jours de révision', deTarget: 'Halber Hizb + 2 Tage Wiederholung', esTarget: 'Medio hizb + 2 días de repaso', idTarget: 'Setengah hizb + 2 hari murajaah' }
 ];
 
 const JUZ_WEEKLY_PLANS = [
-    { id: 'none', arLabel: 'بدون خطة', enLabel: 'No Plan', ayahsPerWeek: 0 },
-    { id: 'w2',   arLabel: '٢ آيات/أسبوع', enLabel: '2 Ayahs/week', ayahsPerWeek: 2 },
-    { id: 'w3',   arLabel: '٣ آيات/أسبوع', enLabel: '3 Ayahs/week', ayahsPerWeek: 3 },
-    { id: 'w5',   arLabel: '٥ آيات/أسبوع', enLabel: '5 Ayahs/week', ayahsPerWeek: 5 },
-    { id: 'w7',   arLabel: '٧ آيات/أسبوع', enLabel: '7 Ayahs/week', ayahsPerWeek: 7 },
-    { id: 'w10',  arLabel: '١٠ آيات/أسبوع', enLabel: '10 Ayahs/week', ayahsPerWeek: 10 },
+    { id: 'none', arLabel: 'بدون خطة', enLabel: 'No Plan', frLabel: 'Sans plan', deLabel: 'Kein Plan', esLabel: 'Sin plan', idLabel: 'Tanpa rencana', ayahsPerWeek: 0 },
+    { id: 'w2',   arLabel: '٢ آيات/أسبوع', enLabel: '2 Ayahs/week', frLabel: '2 versets/sem.', deLabel: '2 Ayat/Woche', esLabel: '2 aleyas/sem.', idLabel: '2 ayat/minggu', ayahsPerWeek: 2 },
+    { id: 'w3',   arLabel: '٣ آيات/أسبوع', enLabel: '3 Ayahs/week', frLabel: '3 versets/sem.', deLabel: '3 Ayat/Woche', esLabel: '3 aleyas/sem.', idLabel: '3 ayat/minggu', ayahsPerWeek: 3 },
+    { id: 'w5',   arLabel: '٥ آيات/أسبوع', enLabel: '5 Ayahs/week', frLabel: '5 versets/sem.', deLabel: '5 Ayat/Woche', esLabel: '5 aleyas/sem.', idLabel: '5 ayat/minggu', ayahsPerWeek: 5 },
+    { id: 'w7',   arLabel: '٧ آيات/أسبوع', enLabel: '7 Ayahs/week', frLabel: '7 versets/sem.', deLabel: '7 Ayat/Woche', esLabel: '7 aleyas/sem.', idLabel: '7 ayat/minggu', ayahsPerWeek: 7 },
+    { id: 'w10',  arLabel: '١٠ آيات/أسبوع', enLabel: '10 Ayahs/week', frLabel: '10 versets/sem.', deLabel: '10 Ayat/Woche', esLabel: '10 aleyas/sem.', idLabel: '10 ayat/minggu', ayahsPerWeek: 10 },
 ];
 
 const SURAHS_EN = [
@@ -157,9 +151,25 @@ const SURAHS_EN_MEANING = [
   "The Opening", "The Cow", "Family of Imran", "The Women", "The Table Spread", "The Cattle", "The Heights", "The Spoils of War", "The Repentance", "Jonah", "Hud", "Joseph", "The Thunder", "Abraham", "The Rocky Tract", "The Bee", "The Night Journey", "The Cave", "Mary", "Ta-Ha", "The Prophets", "The Pilgrimage", "The Believers", "The Light", "The Criterion", "The Poets", "The Ant", "The Stories", "The Spider", "The Romans", "Luqman", "The Prostration", "The Combined Forces", "Sheba", "Originator", "Ya Sin", "Those who set the Ranks", "The Letter \"Saad\"", "The Troops", "The Forgiver", "Explained in Detail", "The Consultation", "The Ornaments of Gold", "The Smoke", "The Crouching", "The Wind-Curved Sandhills", "Muhammad", "The Victory", "The Rooms", "The Letter \"Qaf\"", "The Winnowing Winds", "The Mount", "The Star", "The Moon", "The Beneficent", "The Inevitable", "The Iron", "The Pleading Woman", "The Exile", "She that is to be examined", "The Ranks", "The Congregation", "The Hypocrites", "The Mutual Disillusion", "The Divorce", "The Prohibition", "The Sovereignty", "The Pen", "The Reality", "The Ascending Stairways", "Noah", "The Jinn", "The Enshrouded One", "The Cloaked One", "The Resurrection", "The Man", "The Emissaries", "The Tidings", "Those who drag forth", "He Frowned", "The Overthrowing", "The Cleaving", "The Defrauding", "The Sundering", "The Mansions of the Stars", "The Nightcommer", "The Most High", "The Overwhelming", "The Dawn", "The City", "The Sun", "The Night", "The Morning Hours", "The Relief", "The Fig", "The Clot", "The Power", "The Clear Proof", "The Earthquake", "The Courser", "The Calamity", "The Rivalry in world increase", "The Declining Day", "The Traducer", "The Elephant", "Quraysh", "The Small Kindnesses", "The Abundance", "The Disbelievers", "The Divine Support", "The Palm Fiber", "The Sincerity", "The Daybreak", "The Mankind"
 ];
 
+const SURAHS_MEANING_FR = [
+"L'ouverture", "La vache", "La famille de Imran", "Les femmes", "La table servie", "Les bestiaux", "Les hauteurs", "Le butin", "Le repentir", "Jonas", "Hûd", "Joseph", "Le tonnerre", "Abraham", "Al-Hijr", "L'abeille", "Le voyage nocturne", "La caverne", "Marie", "Ta Ha", "Les prophètes", "Le pèlerinage", "Les croyants", "La lumière", "Le discernement", "Les poètes", "La fourmi", "Les récits", "L'araignée", "Les Romains", "Luqman", "La prosternation", "Les coalisés", "Saba'", "Le Créateur", "Ya Sin", "Les rangés", "Sad", "Les troupes", "Le Pardonneur", "Les versets clairs", "La consultation", "L'ornement d'or", "La fumée", "L'agenouillée", "Al-Ahqaf", "Muhammad", "La victoire", "Les appartements", "Qaf", "Qui éparpillent", "Le mont", "L'étoile", "La lune", "Le Tout Miséricordieux", "L'événement", "Le fer", "La discorde", "L'exil", "L'éprouvée", "Le rang", "Le vendredi", "Les hypocrites", "La grande déception", "Le divorce", "L'interdiction", "La royauté", "La plume", "La réalité", "Les degrés", "Noé", "Les djinns", "L'enveloppé", "Celui qui se couvre", "La résurrection", "L'homme", "Les envoyés", "La nouvelle", "Celles qui arrachent", "Il s'est renfrogné", "L'obscurcissement", "La gerbe", "Les fraudeurs", "La fissure", "Les constellations", "L'astre nocturne", "Le Très Haut", "L'enveloppante", "L'aube", "La cité", "Le soleil", "La nuit", "Le matin", "L'ouverture du cœur", "Le figuier", "L'adhérence", "La destinée", "La preuve évidente", "Le tremblement", "Les coursiers", "L'événement terrible", "La course aux richesses", "Le temps", "Les moqueurs", "L'éléphant", "Quraysh", "L'entraide", "L'abondance", "Les mécréants", "Le secours", "Les fibres", "La sincérité", "L'aube naissante", "Les hommes"
+];
+
+const SURAHS_MEANING_DE = [
+"Die Eröffnung", "Die Kuh", "Die Sippe Imrans", "Die Frauen", "Der Tisch", "Das Vieh", "Die Höhen", "Die Beute", "Die Reue", "Jonas", "Hud", "Josef", "Der Donner", "Abraham", "Die Felsregion", "Die Biene", "Die Nachtreise", "Die Höhle", "Maria", "Ta Ha", "Die Propheten", "Die Pilgerfahrt", "Die Gläubigen", "Das Licht", "Das Kriterium", "Die Dichter", "Die Ameise", "Die Geschichten", "Die Spinne", "Die Römer", "Luqman", "Die Niederwerfung", "Die Parteien", "Saba", "Der Schöpfer", "Ya Sin", "Die Sich Reihenden", "Sad", "Die Scharen", "Der Vergebende", "Ausführlich erklärt", "Die Beratung", "Goldschmuck", "Der Rauch", "Das Kniende", "Die Dünenhügel", "Muhammad", "Der Sieg", "Die Gemächer", "Qaf", "Die Zerstreuen", "Der Berg", "Der Stern", "Der Mond", "Der Allerbarmer", "Das Eintreffende", "Das Eisen", "Die Streitende", "Die Versammlung", "Die Geprüfte", "Die Reihe", "Der Freitag", "Die Heuchler", "Das Gegenseitige Täuschen", "Die Scheidung", "Das Verbot", "Die Herrschaft", "Die Feder", "Die Wahrheit", "Die Aufstiegsstufen", "Noach", "Die Dschinn", "Der Zugedeckte", "Der Zugehüllte", "Die Auferstehung", "Der Mensch", "Die Gesandten", "Die Kunde", "Die Herausreißenden", "Er runzelte die Stirn", "Die Einhüllung", "Der Riss", "Die Wücherer", "Die Spaltung", "Die Sternbilder", "Der Nachtbesucher", "Der Höchste", "Die überwältigende", "Die Morgendämmerung", "Die Stadt", "Die Sonne", "Die Nacht", "Der Vormittag", "Die Erweiterung", "Die Feige", "Der Embryo", "Die Bestimmung", "Der klare Beweis", "Das Erdbeben", "Die Renner", "Die Katastrophe", "Die Mehrung", "Die Zeit", "Der Verleumder", "Der Elefant", "Quraisch", "Die kleine Hilfe", "Das Fülle", "Die Ungläubigen", "Die Hilfe", "Die Fasern", "Die Reine Gottheit", "Der Tagesanbruch", "Die Menschen"
+];
+
+const SURAHS_MEANING_ES = [
+"La apertura", "La vaca", "La familia de Imrán", "Las mujeres", "La mesa servida", "El ganado", "Las alturas", "El botín", "El arrepentimiento", "Jonás", "Hud", "José", "El trueno", "Abraham", "El peñasco", "La abeja", "El viaje nocturno", "La cueva", "María", "Ta Ha", "Los profetas", "La peregrinación", "Los creyentes", "La luz", "El criterio", "Los poetas", "La hormiga", "Los relatos", "La araña", "Los romanos", "Luqmán", "La postración", "Los bandos", "Saba", "El originador", "Ya Sin", "Los que se alinean", "Sad", "Los grupos", "El perdonador", "Explicado en detalle", "La consulta", "Los adornos de oro", "El humo", "La arrodillada", "Las dunas", "Mahoma", "La victoria", "Los aposentos", "Qaf", "Los que arrebatan", "El monte", "La estrella", "La luna", "El Misericordioso", "Lo inevitable", "El hierro", "La disputadora", "El destierro", "La examinada", "La fila", "El viernes", "Los hipócritas", "El mutuo engaño", "El divorcio", "La prohibición", "El reino", "El cálamo", "La realidad", "Las escaleras", "Noé", "Los genios", "El envuelto", "El cubierto", "La resurrección", "El hombre", "Los enviados", "La nueva", "Las que arrancan", "El ceño fruncido", "El arrollamiento", "La hendidura", "Los defraudadores", "La fisura", "Las constelaciones", "El visitante nocturno", "El Altísimo", "La envolvente", "El alba", "La ciudad", "El sol", "La noche", "La mañana", "El alivio", "La higuera", "El coágulo", "El poder", "La prueba clara", "El terremoto", "Los corceles", "La calamidad", "La rivalidad", "El tiempo", "El difamador", "El elefante", "Quraysh", "Las pequeñas ayudas", "La abundancia", "Los incrédulos", "El auxilio", "Las fibras", "La sinceridad", "El alba", "Los hombres"
+];
+
+const SURAHS_MEANING_ID = [
+"Pembukaan", "Sapi Betina", "Keluarga Imran", "Wanita", "Hidangan", "Binatang Ternak", "Tempat Tinggi", "Rampasan Perang", "Pengampunan", "Yunus", "Hud", "Yusuf", "Petir", "Ibrahim", "Bukit yang Teramat keras", "Lebah", "Perjalanan malam", "Goa", "Maryam", "Taha", "Para Nabi", "Haji", "Orang-orang mukmin", "Cahaya", "Pembeda", "Penyair", "Semut", "Kisah-kisah", "Laba-laba", "Romawi", "Luqman", "Sujud", "Golongan yang Bergabung", "Saba", "Pencipta", "Yasin", "Barisan", "Sad", "Para Rombongan", "Yang Mengampuni", "Yang dijadikan terang", "Musyawarah", "Perhiasan", "Asap", "Berlutut", "Bukit-bukit pasir", "Muhammad", "Kemenangan", "Kamar-kamar", "Qaf", "Yang melayang-layang", "Bukit", "Bintang", "Bulan", "Yang Maha Pemurah", "Hari Kiamat", "Besi", "Gugatan", "Pengusiran", "Wanita yang diuji", "Barisan", "Jumat", "Orang-orang munafik", "Pengkhianatan", "Perceraian", "Pengharaman", "Kerajaan", "Pena", "Kebenaran", "Tempat naik", "Nuh", "Jin", "Orang yang berkemul", "Orang yang bercelak", "Kiamat", "Manusia", "Malaikat yang diutus", "Berita penting", "Yang mencabut dengan keras", "Ia bermuka masam", "Penggulungan", "Terbelah", "Orang-orang curang", "Terbelah", "Gugusan bintang yang tinggi", "Yang datang di malam hari", "Yang Paling Tinggi", "Hari pembalasan", "Fajar", "Negeri", "Matahari", "Malam", "Duha", "Lapangan", "Buah Tin", "Segumpal Darah", "Kemuliaan", "Bukti yang nyata", "Guncangan", "Yang berlari kencang", "Hari Kiamat", "Bermegah-megahan", "Asar", "Pengumpat", "Gajah", "Quraisy", "Barang-barang yang berguna", "Nikmat yang banyak", "Orang-orang kafir", "Pertolongan", "Serabut palma", "Ikhlas", "Subuh", "Manusia"
+];
+
 const SURAHS_DATA = [
   ["الفاتحة",7],["البقرة",286],["آل عمران",200],["النساء",176],["المائدة",120],["الأنعام",165],["الأعراف",206],["الأنفال",75],["التوبة",129],["يونس",109],["هود",123],["يوسف",111],["الرعد",43],["إبراهيم",52],["الحجر",99],["النحل",128],["الإسراء",111],["الكهف",110],["مريم",98],["طه",135],["الأنبياء",112],["الحج",78],["المؤمنون",118],["النور",64],["الفرقان",77],["الشعراء",227],["النمل",93],["القصص",88],["العنكبوت",69],["الروم",60],["لقمان",34],["السجدة",30],["الأحزاب",73],["سبأ",54],["فاطر",45],["يس",83],["الصافات",182],["ص",88],["الزمر",75],["غافر",85],["فصلت",54],["الشورى",53],["الزخرف",89],["الدخان",59],["الجاثية",37],["الأحقاف",35],["محمد",38],["الفتح",29],["الحجرات",18],["ق",45],["الذاريات",60],["الطور",49],["النجم",62],["القمر",55],["الرحمن",78],["الواقعة",96],["الحديد",29],["المجادلة",22],["الحشر",24],["الممتحنة",13],["الصف",14],["الجمعة",11],["المنافقون",11],["التغابن",18],["الطلاق",12],["التحريم",12],["الملك",30],["القلم",52],["الحاقة",52],["المعارج",44],["نوح",28],["الجن",28],["المزمل",20],["المدثر",56],["القيامة",40],["الإنسان",31],["المرسلات",50],["النبأ",40],["النازعات",46],["عبس",42],["التكوير",29],["الانفطار",19],["المطففين",36],["الانشقاق",25],["البروج",22],["الطارق",17],["الأعلى",19],["الغاشية",26],["الفجر",30],["البلد",20],["الشمس",15],["الليل",21],["الضحى",11],["الشرح",8],["التين",8],["العلق",19],["القدر",5],["البينة",8],["الزلزلة",8],["العاديات",11],["القارعة",11],["التكاثر",8],["العصر",3],["الهمزة",9],["الفيل",5],["قريش",4],["الماعون",7],["الكوثر",3],["الكافرون",6],["النصر",3],["المسد",5],["الإخلاص",4],["الفلق",5],["الناس",6]
-].map((s, i) => ({ id: i+1, name: s[0], totalAyahs: s[1], enName: SURAHS_EN[i], enMeaning: SURAHS_EN_MEANING[i] }));
+].map((s, i) => ({ id: i+1, name: s[0], totalAyahs: s[1], enName: SURAHS_EN[i], enMeaning: SURAHS_EN_MEANING[i], frMeaning: SURAHS_MEANING_FR[i], deMeaning: SURAHS_MEANING_DE[i], esMeaning: SURAHS_MEANING_ES[i], idMeaning: SURAHS_MEANING_ID[i] }));
 
 const JUZ30_IDS = Array.from({length:37}, (_,i) => i+78);
 const JUZ29_IDS  = Array.from({length:11}, (_,i) => i+67);
@@ -184,7 +194,7 @@ const tDict = {
         title:"المتتبع الذكي لحفظ القرآن", welcomeCloud:"مرحباً بك في المتتبع الذكي لحفظ القرآن",
         enterCode:'أدخل كود المعلم لإدارة الحلقات، أو "كود المتابعة" الخاص بولي الأمر.',
         yourCode:"كود المعلم أو المتابعة", loginSync:"دخول", verifying:"جاري التحقق...", saving:"جاري الحفظ...",
-        connected:"متصل (كود:", notSet:"غير محدد", logout:"خروج",
+        connected:"متصل", notSet:"غير محدد", logout:"خروج",
         editStudent:"تعديل اسم الطالب", addStudent:"إضافة طالب جديد", deleteStudent:"حذف الطالب",
         setPlan:"تحديد خطة الحفظ", totalMemorized:"إجمالي الآيات المحفوظة", completedSurahs:"السور المكتملة:",
         surah:"سورة", ayahs:"آيات", revision:"المراجعة:", searchSurah:"ابحث عن سورة...",
@@ -249,7 +259,7 @@ const tDict = {
         certWizardTitle:"إعدادات الشهادة",
         certWizardStep1:"١. اختر اللغة",certWizardStep2:"٢. سبب الشهادة",certWizardStep3:"٣. ملصق تزييني",
         certReasonLabel:"اختر سبب الشهادة:",certStickerLabel:"اختر ملصقاً (اختياري):",
-        certReasons_ar:[
+        certReasons:[
             {id:'quran_complete',label:'ختم القرآن الكريم كاملاً'},
             {id:'juz_complete',label:'إتمام حفظ جزء كامل'},
             {id:'progress',label:'تقدم ملحوظ في الحفظ'},
@@ -266,19 +276,30 @@ const tDict = {
         certCustomReasonPlaceholder:"اكتب سبب الشهادة...",
         certIssueBtn:"إصدار وحفظ الشهادة",
         ayahsPerWeek:"آيات/أسبوع",
-        copyright:"© 2026 منصة المتتبع الذكي لحفظ القرآن. جميع الحقوق محفوظة.",
+        copyright:"© 2026 المتتبع الذكي لحفظ القرآن. جميع الحقوق محفوظة.",
         listenSurah:"استماع",fromAyah:"من آية",toAyah:"إلى آية",play:"تشغيل",pause:"إيقاف مؤقت",stop:"إيقاف",nowPlaying:"يتم الآن تلاوة الآية",audioPlayer:"مشغل التلاوة (بصوت الحصري)",close:"إغلاق",
         assignHW:"تعيين واجب", assignHWTitle:"تعيين واجب استماع", hwRepetitions:"عدد مرات التكرار",
         hwPending:"تكليف الطالب ⏳", hwCompleted:"تم إنجاز الواجب ✅", clearHW:"إلغاء الواجب",
         newHWAlert:"🎧 لديك واجب استماع جديد!", startHW:"ابدأ الواجب", hwProgress:"تقدم الواجب",
         times:"مرات", saveHW:"حفظ الواجب",
-        readOnlyWarning:"أنتِ الآن في (بوابة الطالب). لعرض قائمة الفصل كاملة، قومي بتسجيل الخروج والدخول بكود المعلم."
+        greatJob:"أحسنت!", hwCompletedMsg:"لقد أتممت واجب الاستماع بنجاح.",
+        noJuzPlanTitle:"لم يتم تحديد خطة للجزء", noJuzPlanHint:"اختر خطتك الأسبوعية من الأعلى.",
+        certSavedToast:"🎉 تم حفظ الشهادة بنجاح!", confirmResetJuz30:"هل أنت متأكد من تصفير بيانات الجزء 30؟",
+        confirmResetJuz29:"هل أنت متأكد من تصفير بيانات الجزء 29؟", resetThisJuz:"تصفير بيانات هذا الجزء",
+        revisionResetBtn:"إعادة", livePreview:"معاينة حية", noCertificatesYet:"لا توجد شهادات بعد. ابدأ بالحفظ واحصل على أولى شهاداتك!",
+        tabFullQuran:"القرآن الكريم", noMemPlanTitle:"لم يتم تحديد خطة الحفظ", noMemPlanHint:"اختر خطة الحفظ من الشريط بالأعلى.",
+        juz30BannerTitle:"الجزء الثلاثون — عمّ", juz29BannerTitle:"الجزء التاسع والعشرون — تبارك",
+        chooseStickerPrompt:"اختر ملصقاً 🎁", chooseLanguage:"اللغة",
+        fmtKhatmDone:"تم الختم بفضل الله!", fmtNDays:"{{n}} يوم", fmtMonthsDays:"{{m}} شهر و {{d}} يوم",
+        fmtYearsMonthsEn:"{{y}} سنة{{tail}}", fmtYearsMonthsTailEn:" و {{x}} شهر", fmtJuzDone:"🎉 تم الإنهاء!", fmtNWeeks:"{{n}} أسبوع",
+        fmtMonthsWeeksEn:"{{mo}} شهر{{w}}", certViewerAward:"شهادة تميز", adminSwitchLang:"لغة الواجهة",
+        selectReciter:"القارئ", setByTeacher:"اختاره المعلم"
     },
     en: {
         title:"Smart Quran Tracker",welcomeCloud:"Welcome to Smart Quran Tracker",
         enterCode:"Enter Teacher code or Parent Tracking code.",
         yourCode:"Code (e.g., class1-1234)",loginSync:"Login",verifying:"Verifying...",saving:"Saving...",
-        connected:"Connected (Code:",notSet:"Not set",logout:"Logout",
+        connected:"Connected",notSet:"Not set",logout:"Logout",
         editStudent:"Edit Student Name",addStudent:"Add New Student",deleteStudent:"Delete Student",
         setPlan:"Set Memorization Plan",totalMemorized:"Total Memorized Ayahs",completedSurahs:"Completed Surahs:",
         surah:"Surah",ayahs:"Ayahs",revision:"Revision:",searchSurah:"Search for a Surah...",
@@ -343,7 +364,7 @@ const tDict = {
         certWizardTitle:"Certificate Settings",
         certWizardStep1:"1. Choose Language",certWizardStep2:"2. Certificate Reason",certWizardStep3:"3. Decorative Sticker",
         certReasonLabel:"Select Reason:",certStickerLabel:"Select Sticker (optional):",
-        certReasons_en:[
+        certReasons:[
             {id:'quran_complete',label:'Completing the entire Quran'},
             {id:'juz_complete',label:'Completing a whole Juz'},
             {id:'progress',label:'Notable progress in memorization'},
@@ -366,49 +387,365 @@ const tDict = {
         hwPending:"Pending ⏳", hwCompleted:"Completed ✅", clearHW:"Clear HW",
         newHWAlert:"🎧 You have a new listening assignment!", startHW:"Start HW", hwProgress:"HW Progress",
         times:"times", saveHW:"Save HW",
-        readOnlyWarning:"You are viewing a single Student's Portal. To view the entire class, log out and enter your Teacher Code."
+        greatJob:"Great Job!", hwCompletedMsg:"You have successfully completed the listening assignment.",
+        noJuzPlanTitle:"No Juz Plan Set", noJuzPlanHint:"Select your weekly plan from above.",
+        certSavedToast:"🎉 Certificate saved!", confirmResetJuz30:"Are you sure you want to reset Juz 30 data?",
+        confirmResetJuz29:"Are you sure you want to reset Juz 29 data?", resetThisJuz:"Reset this Juz",
+        revisionResetBtn:"Reset", livePreview:"Live Preview", noCertificatesYet:"No certificates yet. Start memorizing to earn your first certificate!",
+        tabFullQuran:"Full Quran", noMemPlanTitle:"No Memorization Plan Set", noMemPlanHint:"Select your memorization plan from the bar above.",
+        juz30BannerTitle:"Juz 30 — Amma", juz29BannerTitle:"Juz 29 — Tabarak",
+        chooseStickerPrompt:"Choose a sticker 🎁", chooseLanguage:"Language",
+        fmtKhatmDone:"Khatm completed!", fmtNDays:"{{n}} days", fmtMonthsDays:"{{m}} months, {{d}} days",
+        fmtYearsMonthsEn:"{{y}} year(s){{tail}}", fmtJuzDone:"🎉 Completed!", fmtNWeeks:"{{n}} week(s)",
+        fmtMonthsWeeksEn:"{{mo}} month(s){{w}}", fmtYearsMonthsTailEn:" and {{x}} month(s)",
+        certViewerAward:"Award of Excellence",
+        adminSwitchLang:"Interface language",
+        selectReciter:"Reciter", setByTeacher:"Set by teacher"
     }
 };
 
-const formatRemainingTime = (totalDays, remainingAyahs, isAr) => {
-    if (remainingAyahs <= 0) return isAr ? "تم الختم بفضل الله!" : "Khatm Completed!";
+const UI_LANGS = ['ar','en','fr','de','es','id'];
+const LANG_LABELS = { ar: 'العربية', en: 'English', fr: 'Français', de: 'Deutsch', es: 'Español', id: 'Bahasa Indonesia' };
+
+function normLang(code) {
+    const c = String(code || 'ar').toLowerCase();
+    if (UI_LANGS.includes(c)) return c;
+    return 'ar';
+}
+
+/** Returns migrated student rows, or null if the field is missing or not a non-empty array. */
+function migrateStudentsFromFirestore(rawStudents) {
+    if (!rawStudents || !Array.isArray(rawStudents) || rawStudents.length === 0) return null;
+    return rawStudents.map((s) => {
+        let tasks = s.listeningTasks || [];
+        if (s.listeningTask) { tasks = [...tasks, s.listeningTask]; }
+        return {
+            juz30Data:{}, juz29Data:{}, juz30PlanId:'none', juz29PlanId:'none', juz30Certificates:[], juz29Certificates:[], listeningTasks:tasks, ...s
+        };
+    });
+}
+
+function isRtlLang(l) { return l === 'ar'; }
+function planMemTitle(plan, lang) {
+    if (lang === 'ar') return plan.arTitle;
+    const k = { en:'enTitle', fr:'frTitle', de:'deTitle', es:'esTitle', id:'idTitle' }[lang] || 'enTitle';
+    return plan[k] || plan.enTitle;
+}
+function planMemTarget(plan, lang) {
+    if (lang === 'ar') return plan.arTarget;
+    const k = { en:'enTarget', fr:'frTarget', de:'deTarget', es:'esTarget', id:'idTarget' }[lang] || 'enTarget';
+    return plan[k] || plan.enTarget;
+}
+function planJuzLabel(plan, lang) {
+    if (lang === 'ar') return plan.arLabel;
+    const k = { en:'enLabel', fr:'frLabel', de:'deLabel', es:'esLabel', id:'idLabel' }[lang] || 'enLabel';
+    return plan[k] || plan.enLabel;
+}
+function getSurahPrimary(surah, lang) {
+    if (lang === 'ar') return surah.name;
+    return surah.enName;
+}
+function getSurahSecondary(surah, lang) {
+    if (lang === 'ar') return surah.enName;
+    const k = { en:'enMeaning', fr:'frMeaning', de:'deMeaning', es:'esMeaning', id:'idMeaning' }[lang] || 'enMeaning';
+    return surah[k] || surah.enMeaning;
+}
+function localeForLang(lang) {
+    return { ar:'ar-EG', en:'en-US', fr:'fr-FR', de:'de-DE', es:'es-ES', id:'id-ID' }[lang] || 'en-US';
+}
+function certLangBadge(code) {
+    const m = { ar:'AR', en:'EN', fr:'FR', de:'DE', es:'ES', id:'ID' };
+    return m[code] || String(code || '').toUpperCase().slice(0, 2);
+}
+
+Object.assign(tDict, {
+    fr: {
+        title:"Suivi coranique intelligent", welcomeCloud:"Bienvenue dans le Suivi coranique intelligent",
+        enterCode:"Code enseignant ou code parent.", loginSync:"Connexion",
+        issueCert:"Certificat", certTitle:"Certificat de réussite", certHonorBoard:"Tableau d'honneur",
+        certWizardTitle:"Paramètres du certificat", certIssueBtn:"Enregistrer le certificat",
+        certReasons:[{id:'quran_complete',label:'Achèvement du Coran entier'},{id:'juz_complete',label:'Achèvement d’un Juz'},{id:'progress',label:'Progrès notable'},{id:'excellence',label:'Excellence et maîtrise'},{id:'consistency',label:'Assiduité'},{id:'revision',label:'Maîtrise de la révision'},{id:'custom',label:'Motif personnalisé...'}],
+        juz30Tab:"Juz 30 (ʿAmma)", juz29Tab:"Juz 29 (Tabarak)", stickerStars:"Étoiles", stickerAnimals:"Animaux",
+        stickerNature:"Nature", stickerTrophies:"Trophées", stickerHearts:"Cœurs", stickerQuran:"Islam",
+        greatJob:"Bravo !", hwCompletedMsg:"Tu as terminé le devoir d’écoute.", noJuzPlanTitle:"Aucun plan de Juz",
+        noJuzPlanHint:"Choisis ton plan hebdomadaire ci-dessus.", certSavedToast:"🎉 Certificat enregistré !",
+        confirmResetJuz30:"Réinitialiser les données du Juz 30 ?", confirmResetJuz29:"Réinitialiser les données du Juz 29 ?",
+        resetThisJuz:"Réinitialiser ce Juz", revisionResetBtn:"Réinit.", livePreview:"Aperçu", noCertificatesYet:"Pas encore de certificats.",
+        tabFullQuran:"Coran entier", noMemPlanTitle:"Aucun plan", noMemPlanHint:"Choisis un plan dans la barre ci-dessus.",
+        juz30BannerTitle:"Juz 30 — ʿAmma", juz29BannerTitle:"Juz 29 — Tabarak", chooseStickerPrompt:"Choisir un autocollant 🎁",
+        chooseLanguage:"Langue", copyright:"© 2026 Suivi coranique intelligent. Tous droits réservés.",
+        fmtKhatmDone:"Hâtm accompli !", fmtNDays:"{{n}} jours", fmtMonthsDays:"{{m}} mois, {{d}} jours",
+        fmtYearsMonthsEn:"{{y}} an(s){{tail}}", fmtYearsMonthsTailEn:" et {{x}} mois", fmtJuzDone:"🎉 Terminé !",
+        fmtNWeeks:"{{n}} semaine(s)", fmtMonthsWeeksEn:"{{mo}} mois{{w}}", certViewerAward:"Certificat d’excellence",
+        certInNameOfAllah:"AU NOM D’ALLAH",
+        certAwardOfExcellence:"Certificat d’excellence",
+        certPresentedTo:"Décernée à",
+        certInRecognition:"En reconnaissance de ses efforts pour :",
+        certTeacherSig:"Signature de l’enseignant(e)",
+        certCustomReasonPlaceholder:"Indiquez le motif du certificat...",
+        certDate:"Date d’émission",
+        certAwardedTo:"Nous certifions que",
+        certForReaching:"a mémorisé avec succès",
+        certFromQuran:"du Saint Coran.",
+        assignHW:"Devoir", assignHWTitle:"Assigner un devoir d’écoute", hwRepetitions:"Nombre de répétitions",
+        hwPending:"À faire ⏳", hwCompleted:"Terminé ✅", clearHW:"Supprimer le devoir", saveHW:"Enregistrer",
+        hwProgress:"Progression", newHWAlert:"🎧 Nouveau devoir d’écoute !", startHW:"Commencer",
+        times:"fois", fromAyah:"Depuis l’ayah", toAyah:"Jusqu’à l’ayah", play:"Lecture", pause:"Pause", stop:"Arrêt",
+        nowPlaying:"Ayah en cours", audioPlayer:"Lecteur audio (Al Husary)", close:"Fermer",
+        juzWeeklyPlan:"Plan hebdomadaire de mémorisation", setJuzPlan:"Définir le plan hebdomadaire",
+        juzPlanDesc:"Nombre d’ayahs mémorisés chaque semaine :",
+        weeklyTarget:"Objectif hebdomadaire", remainingAyahs:"Ayahs restants", etaToFinish:"Temps estimé pour finir",
+        juzReport:"Rapport visuel", juzMemorizingNow:"En cours de mémorisation", juzCompleted:"Sourates terminées",
+        juzNotStarted:"Pas commencé", juzNeedsRevision:"À retravailler", juzRecentRevision:"Révision récente", juzOldRevision:"Révision ancienne",
+        studentReport:"Rapport visuel de l’élève", memorizingNow:"En cours", completedSurahsList:"Sourates terminées",
+        needsRevision:"À retravailler", recentRevisions:"Révisions récentes", oldRevisions:"Anciennes révisions",
+        juz30Desc:"37 sourates — An-Naba à An-Nas", juz29Desc:"11 sourates — Al-Mulk à Al-Mursalat",
+        memorizedOf:"mémorisé sur",
+        stickerLabel:"Autocollant :", stickerSets:"Catégories :", allStickers:"Tout", removeSticker:"Appuyer pour retirer",
+        certWizardStep1:"1. Langue du certificat", certWizardStep2:"2. Motif", certWizardStep3:"3. Autocollant",
+        certReasonLabel:"Motif :", certStickerLabel:"Autocollant (optionnel) :",
+        badge100:"Couronne de dignité",badge95:"Le sommet t’attend",badge90:"Presque au sommet",badge80:"Chevalier du Coran",
+        badge70:"Haute ambition",badge60:"Volonté ferme",badge50:"À mi-chemin",badge40:"Motivation vive",
+        badge30:"Persévérant",badge20:"Étoile montante",badge15:"Étincelle",badge10:"Pas assurés",
+        badge5:"Jeune pousse",badge1:"Bon départ",badgeStart:"Prêt à commencer",
+        excellent:"Excellent",good:"Bien",weak:"À retravailler",removeRating:"Annuler la note",resetRevisions:"Réinitialiser les révisions",
+        adminSwitchLang:"Langue de l’interface"
+    },
+    de: {
+        title:"Intelligenter Quran-Tracker", welcomeCloud:"Willkommen beim Quran-Tracker",
+        enterCode:"Lehrer- oder Elterncode eingeben.", loginSync:"Anmelden",
+        issueCert:"Zertifikat ausstellen", certTitle:"Quran-Zertifikat", certHonorBoard:"Ehrentafel",
+        certWizardTitle:"Zertifikatseinstellungen", certIssueBtn:"Zertifikat speichern",
+        certReasons:[{id:'quran_complete',label:'Vollständiger Quran'},{id:'juz_complete',label:'Ganzes Dschuz'},{id:'progress',label:'Deutlicher Fortschritt'},{id:'excellence',label:'Exzellenz und Meisterschaft'},{id:'consistency',label:'Beständigkeit'},{id:'revision',label:'Meisterliche Wiederholung'},{id:'custom',label:'Eigener Grund...'}],
+        juz30Tab:"Dschuz 30 (ʿAmma)", juz29Tab:"Dschuz 29 (Tabarak)", stickerStars:"Sterne", listenSurah:"Anhören",
+        greatJob:"Gut gemacht!", hwCompletedMsg:"Du hast die Hör-Hausaufgabe abgeschlossen.", noJuzPlanTitle:"Kein Dschuz-Plan",
+        noJuzPlanHint:"Wähle oben deinen Wochenplan.", certSavedToast:"🎉 Zertifikat gespeichert!",
+        confirmResetJuz30:"Dschuz 30 wirklich zurücksetzen?", confirmResetJuz29:"Dschuz 29 wirklich zurücksetzen?",
+        resetThisJuz:"Dieses Dschuz zurücksetzen", revisionResetBtn:"Reset", livePreview:"Vorschau",
+        noCertificatesYet:"Noch keine Zertifikate.", tabFullQuran:"Ganzer Quran", noMemPlanTitle:"Kein Auswendigkeitsplan",
+        noMemPlanHint:"Plan oben in der Leiste wählen.", juz30BannerTitle:"Dschuz 30 — ʿAmma", juz29BannerTitle:"Dschuz 29 — Tabarak",
+        chooseStickerPrompt:"Sticker wählen 🎁", chooseLanguage:"Sprache", copyright:"© 2026 Intelligenter Quran-Tracker. Alle Rechte vorbehalten.",
+        fmtKhatmDone:"Khatm abgeschlossen!", fmtNDays:"{{n}} Tage", fmtMonthsDays:"{{m}} Monate, {{d}} Tage",
+        fmtYearsMonthsEn:"{{y}} Jahr(e){{tail}}", fmtYearsMonthsTailEn:" und {{x}} Monat(e)", fmtJuzDone:"🎉 Fertig!",
+        fmtNWeeks:"{{n}} Woche(n)", fmtMonthsWeeksEn:"{{mo}} Monat(e){{w}}", certViewerAward:"Auszeichnung",
+        certInNameOfAllah:"IM NAMEN ALLAHS",
+        certAwardOfExcellence:"Auszeichnung für hervorragende Leistung",
+        certPresentedTo:"Verliehen an",
+        certInRecognition:"In Anerkennung der Bemühungen in:",
+        certTeacherSig:"Unterschrift der Lehrkraft",
+        certCustomReasonPlaceholder:"Grund des Zertifikats eingeben...",
+        certDate:"Ausstellungsdatum",
+        certAwardedTo:"Wir bescheinigen hiermit, dass",
+        certForReaching:"erfolgreich auswendig gelernt hat",
+        certFromQuran:"des Heiligen Quran.",
+        assignHW:"Hausaufgabe", assignHWTitle:"Hör-Hausaufgabe zuweisen", hwRepetitions:"Wiederholungen",
+        hwPending:"Offen ⏳", hwCompleted:"Erledigt ✅", clearHW:"Hausaufgabe löschen", saveHW:"Speichern",
+        hwProgress:"Fortschritt", newHWAlert:"🎧 Neue Hör-Hausaufgabe!", startHW:"Starten",
+        times:"Mal", fromAyah:"Von Ayah", toAyah:"Bis Ayah", play:"Abspielen", pause:"Pause", stop:"Stopp",
+        nowPlaying:"Ayah wird wiedergegeben", audioPlayer:"Audioplayer (Al Husary)", close:"Schließen",
+        juzWeeklyPlan:"Wöchentlicher Auswendiglernplan", setJuzPlan:"Wochenplan festlegen",
+        juzPlanDesc:"Wie viele Ayahs pro Woche werden gelernt:",
+        weeklyTarget:"Wochenziel", remainingAyahs:"Verbleibende Ayahs", etaToFinish:"Voraussichtliche Dauer",
+        juzReport:"Visueller Bericht", juzMemorizingNow:"Wird auswendig gelernt", juzCompleted:"Fertige Suren",
+        juzNotStarted:"Nicht begonnen", juzNeedsRevision:"Wiederholung nötig", juzRecentRevision:"Kürzlich wiederholt", juzOldRevision:"Länger nicht wiederholt",
+        studentReport:"Visueller Lernbericht", memorizingNow:"In Bearbeitung", completedSurahsList:"Fertige Suren",
+        needsRevision:"Wiederholung nötig", recentRevisions:"Kürzliche Wiederholungen", oldRevisions:"Ältere Wiederholungen",
+        juz30Desc:"37 Suren — An-Naba bis An-Nas", juz29Desc:"11 Suren — Al-Mulk bis Al-Mursalat",
+        memorizedOf:"gelernt von",
+        stickerAnimals:"Tiere", stickerNature:"Natur", stickerTrophies:"Trophäen", stickerHearts:"Herzen", stickerQuran:"Islam",
+        stickerLabel:"Sticker für den Schüler:", stickerSets:"Sticker-Sets:", allStickers:"Alle", removeSticker:"Tippen zum Entfernen",
+        certWizardStep1:"1. Zertifikatssprache", certWizardStep2:"2. Anlass", certWizardStep3:"3. Sticker",
+        certReasonLabel:"Anlass:", certStickerLabel:"Sticker (optional):",
+        badge100:"Krone der Würde",badge95:"Der Gipfel ruft",badge90:"Fast geschafft",badge80:"Quran-Ritter",
+        badge70:"Starker Wille",badge60:"Unbeugsam",badge50:"Halbzeit",badge40:"Leuchtender Eifer",
+        badge30:"Beharrlich",badge20:"Aufsteigender Stern",badge15:"Funke",badge10:"Sichere Schritte",
+        badge5:"Setzling",badge1:"Guter Start",badgeStart:"Bereit zum Start",
+        excellent:"Ausgezeichnet",good:"Gut",weak:"Mehr Fokus nötig",removeRating:"Bewertung entfernen",resetRevisions:"Wiederholungen zurücksetzen",
+        adminSwitchLang:"Oberflächensprache"
+    },
+    es: {
+        title:"Rastreador inteligente del Corán", welcomeCloud:"Bienvenido al rastreador del Corán",
+        enterCode:"Código del profesor o del tutor.", loginSync:"Entrar",
+        issueCert:"Emitir certificado", certTitle:"Certificado coránico", certHonorBoard:"Tablón de honor",
+        certWizardTitle:"Ajustes del certificado", certIssueBtn:"Guardar certificado",
+        certReasons:[{id:'quran_complete',label:'Corán completo'},{id:'juz_complete',label:'Un Yuz completo'},{id:'progress',label:'Buen progreso'},{id:'excellence',label:'Excelencia y dominio'},{id:'consistency',label:'Constancia'},{id:'revision',label:'Dominio del repaso'},{id:'custom',label:'Motivo personalizado...'}],
+        juz30Tab:"Yuz 30 (Amma)", juz29Tab:"Yuz 29 (Tabarak)", listenSurah:"Escuchar", stickerStars:"Estrellas",
+        greatJob:"¡Muy bien!", hwCompletedMsg:"Has completado el deber de audio.", noJuzPlanTitle:"Sin plan de Yuz",
+        noJuzPlanHint:"Elige tu plan semanal arriba.", certSavedToast:"🎉 ¡Certificado guardado!",
+        confirmResetJuz30:"¿Restablecer datos del Yuz 30?", confirmResetJuz29:"¿Restablecer datos del Yuz 29?",
+        resetThisJuz:"Restablecer este Yuz", revisionResetBtn:"Reiniciar", livePreview:"Vista previa",
+        noCertificatesYet:"Aún no hay certificados.", tabFullQuran:"Corán completo", noMemPlanTitle:"Sin plan de memorización",
+        noMemPlanHint:"Elige un plan en la barra superior.", juz30BannerTitle:"Yuz 30 — Amma", juz29BannerTitle:"Yuz 29 — Tabarak",
+        chooseStickerPrompt:"Elige una pegatina 🎁", chooseLanguage:"Idioma", copyright:"© 2026 Rastreador inteligente del Corán. Todos los derechos reservados.",
+        fmtKhatmDone:"¡Hatim completado!", fmtNDays:"{{n}} días", fmtMonthsDays:"{{m}} meses, {{d}} días",
+        fmtYearsMonthsEn:"{{y}} año(s){{tail}}", fmtYearsMonthsTailEn:" y {{x}} mes(es)", fmtJuzDone:"🎉 ¡Completado!",
+        fmtNWeeks:"{{n}} semana(s)", fmtMonthsWeeksEn:"{{mo}} mes(es){{w}}", certViewerAward:"Premio al mérito",
+        certInNameOfAllah:"EN EL NOMBRE DE ALLAH",
+        certAwardOfExcellence:"Premio al mérito",
+        certPresentedTo:"Se otorga a",
+        certInRecognition:"En reconocimiento de su dedicación en:",
+        certTeacherSig:"Firma del maestro/a",
+        certCustomReasonPlaceholder:"Escribe el motivo del certificado...",
+        certDate:"Fecha de emisión",
+        certAwardedTo:"Certificamos que",
+        certForReaching:"ha memorizado con éxito",
+        certFromQuran:"del Sagrado Corán.",
+        assignHW:"Tarea", assignHWTitle:"Asignar tarea de audio", hwRepetitions:"Repeticiones",
+        hwPending:"Pendiente ⏳", hwCompleted:"Completada ✅", clearHW:"Quitar tarea", saveHW:"Guardar",
+        hwProgress:"Progreso", newHWAlert:"🎧 ¡Nueva tarea de audio!", startHW:"Empezar",
+        times:"veces", fromAyah:"Desde el aleya", toAyah:"Hasta el aleya", play:"Reproducir", pause:"Pausa", stop:"Detener",
+        nowPlaying:"Reproduciendo aleya", audioPlayer:"Reproductor de audio (Al Husary)", close:"Cerrar",
+        juzWeeklyPlan:"Plan semanal de memorización", setJuzPlan:"Definir plan semanal",
+        juzPlanDesc:"Cuántos aleyas memoriza por semana:",
+        weeklyTarget:"Meta semanal", remainingAyahs:"Aleyas restantes", etaToFinish:"Tiempo estimado para terminar",
+        juzReport:"Informe visual", juzMemorizingNow:"Memorizando", juzCompleted:"Suras completadas",
+        juzNotStarted:"No empezado", juzNeedsRevision:"Necesita repaso", juzRecentRevision:"Repaso reciente", juzOldRevision:"Repaso antiguo",
+        studentReport:"Informe visual del estudiante", memorizingNow:"En progreso", completedSurahsList:"Suras completadas",
+        needsRevision:"Necesita repaso", recentRevisions:"Repasos recientes", oldRevisions:"Repasos antiguos",
+        juz30Desc:"37 suras — An-Naba a An-Nas", juz29Desc:"11 suras — Al-Mulk a Al-Mursalat",
+        memorizedOf:"memorizado de",
+        stickerAnimals:"Animales", stickerNature:"Naturaleza", stickerTrophies:"Trofeos", stickerHearts:"Corazones", stickerQuran:"Islam",
+        stickerLabel:"Pegatina para el estudiante:", stickerSets:"Categorías:", allStickers:"Todo", removeSticker:"Toca para quitar",
+        certWizardStep1:"1. Idioma del certificado", certWizardStep2:"2. Motivo", certWizardStep3:"3. Pegatina",
+        certReasonLabel:"Motivo:", certStickerLabel:"Pegatina (opcional):",
+        badge100:"Corona de dignidad",badge95:"La cima te espera",badge90:"Casi allí",badge80:"Caballero del Corán",
+        badge70:"Alta determinación",badge60:"Voluntad firme",badge50:"A mitad de camino",badge40:"Ímpetu encendido",
+        badge30:"Persistente",badge20:"Estrella en ascenso",badge15:"Chispa",badge10:"Pasos firmes",
+        badge5:"Brote bendecido",badge1:"Buen comienzo",badgeStart:"Listo para empezar",
+        excellent:"Excelente",good:"Bueno",weak:"Necesita repaso",removeRating:"Quitar calificación",resetRevisions:"Restablecer repasos",
+        adminSwitchLang:"Idioma de la interfaz"
+    },
+    id: {
+        title:"Pelacak Quran Pintar", welcomeCloud:"Selamat datang di Pelacak Quran",
+        enterCode:"Kode guru atau kode orang tua.", loginSync:"Masuk",
+        issueCert:"Buat sertifikat", certTitle:"Sertifikat prestasi Quran", certHonorBoard:"Papan prestasi",
+        certWizardTitle:"Pengaturan sertifikat", certIssueBtn:"Simpan sertifikat",
+        certReasons:[{id:'quran_complete',label:'Khatam Al-Qur’an seluruhnya'},{id:'juz_complete',label:'Menyelesaikan satu Juz'},{id:'progress',label:'Kemajuan hafalan'},{id:'excellence',label:'Keunggulan dan penguasaan'},{id:'consistency',label:'Konsistensi dan ketekunan'},{id:'revision',label:'Penguasaan murajaah'},{id:'custom',label:'Alasan khusus...'}],
+        juz30Tab:"Juz 30 (Amma)", juz29Tab:"Juz 29 (Tabarak)", listenSurah:"Dengarkan", stickerStars:"Bintang",
+        greatJob:"Bagus!", hwCompletedMsg:"Kamu menyelesaikan tugas mendengarkan.", noJuzPlanTitle:"Belum ada rencana Juz",
+        noJuzPlanHint:"Pilih rencana mingguan di atas.", certSavedToast:"🎉 Sertifikat disimpan!",
+        confirmResetJuz30:"Reset data Juz 30?", confirmResetJuz29:"Reset data Juz 29?",
+        resetThisJuz:"Reset Juz ini", revisionResetBtn:"Reset", livePreview:"Pratinjau",
+        noCertificatesYet:"Belum ada sertifikat.", tabFullQuran:"Al-Qur’an utuh", noMemPlanTitle:"Belum ada rencana hafalan",
+        noMemPlanHint:"Pilih rencana di bilah atas.", juz30BannerTitle:"Juz 30 — Amma", juz29BannerTitle:"Juz 29 — Tabarak",
+        chooseStickerPrompt:"Pilih stiker 🎁", chooseLanguage:"Bahasa", copyright:"© 2026 Pelacak Quran Pintar. Hak cipta dilindungi.",
+        fmtKhatmDone:"Khatam selesai!", fmtNDays:"{{n}} hari", fmtMonthsDays:"{{m}} bulan, {{d}} hari",
+        fmtYearsMonthsEn:"{{y}} tahun{{tail}}", fmtYearsMonthsTailEn:" dan {{x}} bulan", fmtJuzDone:"🎉 Selesai!",
+        fmtNWeeks:"{{n}} minggu", fmtMonthsWeeksEn:"{{mo}} bulan{{w}}", certViewerAward:"Penghargaan",
+        certInNameOfAllah:"DENGAN NAMA ALLAH",
+        certAwardOfExcellence:"Penghargaan prestasi",
+        certPresentedTo:"Diberikan kepada",
+        certInRecognition:"Atas usaha dan dedikasinya dalam:",
+        certTeacherSig:"Tanda tangan guru",
+        certCustomReasonPlaceholder:"Tulis alasan sertifikat...",
+        certDate:"Tanggal diterbitkan",
+        certAwardedTo:"Dengan bangga kami menyatakan bahwa",
+        certForReaching:"telah berhasil menghafal",
+        certFromQuran:"dari Al-Qur’an.",
+        assignHW:"Tugas", assignHWTitle:"Tetapkan tugas mendengarkan", hwRepetitions:"Jumlah pengulangan",
+        hwPending:"Menunggu ⏳", hwCompleted:"Selesai ✅", clearHW:"Hapus tugas", saveHW:"Simpan",
+        hwProgress:"Progres", newHWAlert:"🎧 Tugas mendengarkan baru!", startHW:"Mulai",
+        times:"kali", fromAyah:"Dari ayat", toAyah:"Sampai ayat", play:"Putar", pause:"Jeda", stop:"Berhenti",
+        nowPlaying:"Memutar ayat", audioPlayer:"Pemutar audio (Al Husary)", close:"Tutup",
+        juzWeeklyPlan:"Rencana hafalan mingguan", setJuzPlan:"Atur rencana mingguan",
+        juzPlanDesc:"Berapa ayat dihafal per minggu:",
+        weeklyTarget:"Target mingguan", remainingAyahs:"Ayat tersisa", etaToFinish:"Perkiraan waktu selesai",
+        juzReport:"Laporan visual", juzMemorizingNow:"Sedang dihafal", juzCompleted:"Surah selesai",
+        juzNotStarted:"Belum dimulai", juzNeedsRevision:"Perlu murajaah", juzRecentRevision:"Murajaah baru-baru ini", juzOldRevision:"Murajaah lama",
+        studentReport:"Laporan visual santri", memorizingNow:"Sedang berjalan", completedSurahsList:"Surah selesai",
+        needsRevision:"Perlu murajaah", recentRevisions:"Murajaah terbaru", oldRevisions:"Murajaah lama",
+        juz30Desc:"37 surah — An-Naba sampai An-Nas", juz29Desc:"11 surah — Al-Mulk sampai Al-Mursalat",
+        memorizedOf:"dihafal dari",
+        stickerAnimals:"Hewan", stickerNature:"Alam", stickerTrophies:"Piala", stickerHearts:"Hati", stickerQuran:"Islam",
+        stickerLabel:"Sticker untuk santri:", stickerSets:"Kategori stiker:", allStickers:"Semua", removeSticker:"Ketuk untuk menghapus",
+        certWizardStep1:"1. Bahasa sertifikat", certWizardStep2:"2. Alasan", certWizardStep3:"3. Stiker",
+        certReasonLabel:"Alasan:", certStickerLabel:"Sticker (opsional):",
+        badge100:"Mahkota kemuliaan",badge95:"Puncak menanti",badge90:"Hampir sampai",badge80:"Kesatria Quran",
+        badge70:"Tekad tinggi",badge60:"Tekad kuat",badge50:"Setengah jalan",badge40:"Semangat menyala",
+        badge30:"Pahlawan gigih",badge20:"Bintang baru",badge15:"Percikan cahaya",badge10:"Langkah mantap",
+        badge5:"Tunas diberkahi",badge1:"Awal yang baik",badgeStart:"Siap memulai",
+        excellent:"Sangat baik",good:"Baik",weak:"Perlu fokus",removeRating:"Hapus penilaian",resetRevisions:"Atur ulang murajaah",
+        adminSwitchLang:"Bahasa antarmuka", parentPortal:"Portal santri"
+    }
+});
+
+/** Merge English defaults with locale overrides (fr/de/es/id store only overrides). Arabic stays standalone. */
+function uiLocalePack(code) {
+    const c = normLang(code);
+    if (c === 'ar') return tDict.ar;
+    if (c === 'en') return tDict.en;
+    const extra = tDict[c];
+    if (!extra) return tDict.en;
+    return { ...tDict.en, ...extra };
+}
+
+const formatRemainingTime = (totalDays, remainingAyahs, lang, tf) => {
+    if (remainingAyahs <= 0) return tf('fmtKhatmDone');
     const daysLeft = Math.ceil(totalDays * (remainingAyahs / TOTAL_QURAN_AYAHS));
-    if (daysLeft < 30) return isAr ? `${daysLeft} يوم` : `${daysLeft} days`;
+    if (daysLeft < 30) {
+        if (lang === 'ar') return `${daysLeft} يوم`;
+        return tf('fmtNDays').replace(/\{\{n\}\}/g, String(daysLeft));
+    }
     const months = Math.floor(daysLeft / 30);
     const rDays = Math.ceil(daysLeft % 30);
-    if (months < 12) return isAr ? `${months} شهر و ${rDays} يوم` : `${months} months, ${rDays} days`;
+    if (months < 12) {
+        if (lang === 'ar') return `${months} شهر و ${rDays} يوم`;
+        return tf('fmtMonthsDays').replace(/\{\{m\}\}/g, String(months)).replace(/\{\{d\}\}/g, String(rDays));
+    }
     const years = Math.floor(months / 12);
     const rMonths = months % 12;
-    return isAr ? `${years} سنة${rMonths > 0 ? ` و ${rMonths} شهر` : ''}` : `${years} year(s)${rMonths > 0 ? ` and ${rMonths} month(s)` : ''}`;
+    if (lang === 'ar') return `${years} سنة${rMonths > 0 ? ` و ${rMonths} شهر` : ''}`;
+    const tail = rMonths > 0 ? tf('fmtYearsMonthsTailEn').replace(/\{\{x\}\}/g, String(rMonths)) : '';
+    return tf('fmtYearsMonthsEn').replace(/\{\{y\}\}/g, String(years)).replace(/\{\{tail\}\}/g, tail);
 };
 
-// Format weeks remaining for juz plans
-const formatJuzETA = (remainingAyahs, ayahsPerWeek, isAr) => {
-    if (remainingAyahs <= 0) return isAr ? '🎉 تم الإنهاء!' : '🎉 Completed!';
+const formatJuzETA = (remainingAyahs, ayahsPerWeek, lang, tf) => {
+    if (remainingAyahs <= 0) return tf('fmtJuzDone');
     if (ayahsPerWeek <= 0) return '—';
     const weeks = Math.ceil(remainingAyahs / ayahsPerWeek);
-    if (weeks < 4) return isAr ? `${weeks} أسبوع` : `${weeks} week${weeks !== 1 ? 's' : ''}`;
-    
+    if (weeks < 4) {
+        if (lang === 'ar') return `${weeks} أسبوع`;
+        return tf('fmtNWeeks').replace(/\{\{n\}\}/g, String(weeks));
+    }
     const totalMonths = Math.floor(weeks / 4);
     const remWeeks = weeks % 4;
-
     if (totalMonths < 12) {
-        if (isAr) return `${totalMonths} شهر${remWeeks > 0 ? ` و ${remWeeks} أسبوع` : ''}`;
-        return `${totalMonths} month${totalMonths !== 1 ? 's' : ''}${remWeeks > 0 ? ` and ${remWeeks} week${remWeeks !== 1 ? 's' : ''}` : ''}`;
+        if (lang === 'ar') return `${totalMonths} شهر${remWeeks > 0 ? ` و ${remWeeks} أسبوع` : ''}`;
+        const wPart = remWeeks > 0
+            ? (lang === 'en' ? ` and ${remWeeks} week${remWeeks !== 1 ? 's' : ''}`
+                : lang === 'fr' ? ` et ${remWeeks} sem.`
+                : lang === 'de' ? `, ${remWeeks} Wo.`
+                : lang === 'es' ? ` y ${remWeeks} sem.`
+                : `, ${remWeeks} mgg`)
+            : '';
+        return tf('fmtMonthsWeeksEn').replace(/\{\{mo\}\}/g, String(totalMonths)).replace(/\{\{w\}\}/g, wPart);
     }
-
     const years = Math.floor(totalMonths / 12);
     const remMonths = totalMonths % 12;
-    
-    if (isAr) return `${years} سنة${remMonths > 0 ? ` و ${remMonths} شهر` : ''}`;
-    return `${years} year${years !== 1 ? 's' : ''}${remMonths > 0 ? ` and ${remMonths} month${remMonths !== 1 ? 's' : ''}` : ''}`;
+    if (lang === 'ar') return `${years} سنة${remMonths > 0 ? ` و ${remMonths} شهر` : ''}`;
+    const tail = remMonths > 0 ? tf('fmtYearsMonthsTailEn').replace(/\{\{x\}\}/g, String(remMonths)) : '';
+    return tf('fmtYearsMonthsEn').replace(/\{\{y\}\}/g, String(years)).replace(/\{\{tail\}\}/g, tail);
 };
 
+// ── Shared Reciters List ─────────────────────────────────────────────────────
+const RECITERS = [
+    { value: 'Husary_128kbps',                       label: 'Al-Husary' },
+    { value: 'Alafasy_128kbps',                      label: 'Mishary Alafasy' },
+    { value: 'Abdullah_Basfar_192kbps',              label: 'Abdullah Basafar' },
+    { value: 'Ali_Jaber_64kbps',                     label: 'Ali Jaber' },
+    { value: 'Ibrahim_Akhdar_32kbps',                label: 'Ibrahim Akhdar' },
+    { value: 'Minshawy_Murattal_128kbps',            label: 'Almenshawy' },
+    { value: 'MultiLanguage/Basfar_Walk_192kbps',    label: 'Basafar (Multilanguage)' },
+    { value: 'khalefa_al_tunaiji_64kbps',            label: 'Khalefa Al Tunaiji' },
+    { value: 'warsh/warsh_ibrahim_aldosary_128kbps', label: 'Ibrahim Al Dosary (Warsh)' },
+];
+
 // ── Teacher HW Alert Component ───────────────────────────────────────────────
-function TeacherHWAlert({ task, onClear, isAr, t }) {
+function TeacherHWAlert({ task, onClear, lang, t }) {
     if (!task) return null;
     const surah = SURAHS_DATA.find(s => s.id === task.surahId);
     const isCompleted = task.completed;
+    const isRtl = isRtlLang(lang);
     
     const bgClass = isCompleted ? 'bg-red-50 border-red-200' : 'bg-purple-50 border-purple-200';
     const textClass = isCompleted ? 'text-red-800' : 'text-purple-800';
@@ -426,7 +763,8 @@ function TeacherHWAlert({ task, onClear, isAr, t }) {
                        {isCompleted ? t('hwCompleted') : t('hwPending')}
                    </h4>
                    <p className={`text-xs mt-1 font-medium ${isCompleted ? 'text-red-600' : 'text-purple-600'}`}>
-                       {t('surah')} {surah?.[isAr ? 'name' : 'enName']} <span className="mx-1">•</span> {t('ayahs')} {task.fromAyah}-{task.toAyah} <span className="mx-1">•</span> {task.requiredRepeats} {t('times')}
+                       {t('surah')} {surah ? getSurahPrimary(surah, lang) : ''} <span className="mx-1">•</span> {t('ayahs')} {task.fromAyah}-{task.toAyah} <span className="mx-1">•</span> {task.requiredRepeats} {t('times')}
+                       {task.reciter && <><span className="mx-1">•</span> <i className="fas fa-microphone-alt mr-0.5"></i>{(RECITERS.find(r=>r.value===task.reciter)||{label:task.reciter}).label}</>}
                    </p>
                </div>
            </div>
@@ -440,11 +778,12 @@ function TeacherHWAlert({ task, onClear, isAr, t }) {
 }
 
 // ── HW Assignment Modal ──────────────────────────────────────────────────────
-function AssignHWModal({ onClose, onSave, isAr, t }) {
+function AssignHWModal({ onClose, onSave, lang, t }) {
     const [surahId, setSurahId] = useState(1);
     const [fromAyah, setFromAyah] = useState(1);
     const [toAyah, setToAyah] = useState(7);
     const [repeats, setRepeats] = useState(3);
+    const [hwReciter, setHwReciter] = useState('Husary_128kbps');
 
     const selectedSurah = SURAHS_DATA.find(s => s.id === Number(surahId));
 
@@ -461,13 +800,14 @@ function AssignHWModal({ onClose, onSave, isAr, t }) {
             fromAyah: Number(fromAyah),
             toAyah: Number(toAyah),
             requiredRepeats: Number(repeats),
+            reciter: hwReciter,
             completed: false,
             id: Date.now().toString()
         });
     };
 
     return (
-        <div className="fixed inset-0 z-[250] flex items-center justify-center bg-slate-900/80 p-4 backdrop-blur-sm" dir={isAr?'rtl':'ltr'}>
+        <div className="fixed inset-0 z-[250] flex items-center justify-center bg-slate-900/80 p-4 backdrop-blur-sm" dir={isRtlLang(lang)?'rtl':'ltr'}>
             <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-fade-in-up">
                 <div className="bg-purple-600 p-4 text-white flex justify-between items-center">
                     <h3 className="font-bold flex items-center gap-2"><i className="fas fa-headphones-alt"></i> {t('assignHWTitle')}</h3>
@@ -477,7 +817,7 @@ function AssignHWModal({ onClose, onSave, isAr, t }) {
                     <div>
                         <label className="block text-xs font-bold text-slate-500 mb-1">{t('surah')}</label>
                         <select value={surahId} onChange={(e) => setSurahId(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-purple-500 font-bold">
-                            {SURAHS_DATA.map(s => <option key={s.id} value={s.id}>{s.id}. {isAr?s.name:s.enName}</option>)}
+                            {SURAHS_DATA.map(s => <option key={s.id} value={s.id}>{s.id}. {getSurahPrimary(s, lang)} — {getSurahSecondary(s, lang)}</option>)}
                         </select>
                     </div>
                     <div className="flex gap-3">
@@ -496,6 +836,12 @@ function AssignHWModal({ onClose, onSave, isAr, t }) {
                             {[1, 2, 3, 5, 7, 10, 15, 20].map(n => <option key={n} value={n}>{n} {t('times')}</option>)}
                         </select>
                     </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">{t('selectReciter')}</label>
+                        <select value={hwReciter} onChange={(e) => setHwReciter(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-purple-500 font-bold" dir="ltr">
+                            {RECITERS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                        </select>
+                    </div>
                 </div>
                 <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
                     <button onClick={onClose} className="flex-1 py-2.5 rounded-xl font-bold text-slate-500 bg-white border border-slate-200 hover:bg-slate-100">{t('cancel')}</button>
@@ -507,7 +853,7 @@ function AssignHWModal({ onClose, onSave, isAr, t }) {
 }
 
 // ── Audio Player Modal ───────────────────────────────────────────────────────
-function AudioPlayerModal({ surah, onClose, t, isAr, hwTask, onHWComplete }) {
+function AudioPlayerModal({ surah, onClose, t, lang, hwTask, onHWComplete }) {
     const initialFrom = hwTask ? hwTask.fromAyah : 1;
     const initialTo = hwTask ? hwTask.toAyah : surah.totalAyahs;
 
@@ -517,14 +863,20 @@ function AudioPlayerModal({ surah, onClose, t, isAr, hwTask, onHWComplete }) {
     const [isPlaying, setIsPlaying] = useState(false);
     const [ayahText, setAyahText] = useState('');
     const [isLoadingText, setIsLoadingText] = useState(false);
-    
+    // For HW tasks, reciter is locked to what the teacher assigned.
+    // For free listening, the student can pick their own reciter.
+    const [reciter, setReciter] = useState(() => {
+        if (hwTask && hwTask.reciter) return hwTask.reciter;
+        try { return localStorage.getItem('quran-reciter') || 'Husary_128kbps'; }
+        catch(e) { return 'Husary_128kbps'; }
+    });
     const [loopsCompleted, setLoopsCompleted] = useState(0);
     const [hwFinished, setHwFinished] = useState(false);
     const audioRef = useRef(null);
 
     const pad = (num) => String(num).padStart(3, '0');
     // Using Mahmoud Khalil Al-Husary 128kbps from everyayah.com
-    const audioSrc = `https://everyayah.com/data/Husary_128kbps/${pad(surah.id)}${pad(currentAyah)}.mp3`;
+    const audioSrc = `https://everyayah.com/data/${reciter}/${pad(surah.id)}${pad(currentAyah)}.mp3`;
 
     useEffect(() => {
         let isMounted = true;
@@ -603,112 +955,250 @@ function AudioPlayerModal({ surah, onClose, t, isAr, hwTask, onHWComplete }) {
     };
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 animate-fade-in-up" dir={isAr ? 'rtl' : 'ltr'}>
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border-2 border-green-500 relative">
-                
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-2 sm:p-4 animate-fade-in-up" dir={isRtlLang(lang) ? 'rtl' : 'ltr'}>
+            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden relative" style={{maxHeight:'calc(100vh - 16px)'}}>
+
                 {hwFinished && (
                     <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur flex flex-col items-center justify-center p-6 text-center animate-fade-in-up">
-                        <div className="text-6xl mb-4 anim-tada">🎉</div>
-                        <h2 className="text-2xl font-bold text-green-700 mb-2">{isAr ? 'أحسنت!' : 'Great Job!'}</h2>
-                        <p className="text-slate-600 font-medium mb-6">{isAr ? 'لقد أتممت واجب الاستماع بنجاح.' : 'You have successfully completed the listening assignment.'}</p>
-                        <button onClick={onClose} className="bg-green-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-green-500 w-full transition-transform hover:scale-105">{t('close')}</button>
+                        <div className="text-5xl mb-3 anim-tada">🎉</div>
+                        <h2 className="text-xl font-bold text-green-700 mb-2">{t('greatJob')}</h2>
+                        <p className="text-slate-600 font-medium mb-5">{t('hwCompletedMsg')}</p>
+                        <button onClick={onClose} className="bg-green-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-green-500 w-full">{t('close')}</button>
                     </div>
                 )}
 
-                <div className={`p-4 flex justify-between items-center text-white ${hwTask ? 'bg-gradient-to-r from-purple-800 to-purple-600' : 'bg-gradient-to-r from-green-800 to-green-600'}`}>
+                {/* Header - always visible, never scrolls */}
+                <div className={`px-4 py-3 flex justify-between items-center text-white shrink-0 ${hwTask ? 'bg-gradient-to-r from-purple-800 to-purple-600' : 'bg-gradient-to-r from-green-800 to-green-600'}`}>
                     <div className="flex items-center gap-2">
-                        <i className="fas fa-headphones-alt text-xl text-white/80"></i>
-                        <span className="font-bold">{hwTask ? t('assignHW') : t('audioPlayer')}</span>
+                        <i className="fas fa-headphones-alt text-lg text-white/80"></i>
+                        <div>
+                            <span className="font-bold text-sm sm:text-base">{hwTask ? t('assignHW') : t('audioPlayer')}</span>
+                            <span className="block text-xs text-white/70 font-medium">{getSurahPrimary(surah, lang)}</span>
+                        </div>
                     </div>
-                    <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
+                    <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors shrink-0">
                         <i className="fas fa-times"></i>
                     </button>
                 </div>
-                
-                <div className="p-6">
-                    <div className="text-center mb-6">
-                        <h2 className="text-2xl font-bold text-slate-800 mb-1">{isAr ? surah.name : surah.enName}</h2>
-                        <p className="text-sm text-slate-500">{t('ayahs')} {surah.totalAyahs}</p>
+
+                {/* Scrollable body */}
+                <div className="overflow-y-auto custom-scrollbar flex-1 px-4 py-3 sm:px-5 sm:py-4 space-y-3">
+
+                    {/* Reciter Selector */}
+                    <div>
+                        <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 mb-1">
+                            {t('selectReciter')}
+                            {hwTask && <span className="inline-flex items-center gap-1 text-purple-600 bg-purple-50 border border-purple-200 rounded-full px-2 py-0.5 text-[10px] font-bold"><i className="fas fa-lock text-[9px]"></i> {t('setByTeacher') || 'Set by teacher'}</span>}
+                        </label>
+                        <select
+                            value={reciter}
+                            disabled={!!hwTask}
+                            onChange={(e) => {
+                                setReciter(e.target.value);
+                                try { localStorage.setItem('quran-reciter', e.target.value); } catch(err) {}
+                            }}
+                            className={`w-full border rounded-xl px-3 py-2 outline-none font-bold text-sm text-slate-700 transition-colors ${hwTask ? 'bg-purple-50 border-purple-200 text-purple-800 opacity-80 cursor-not-allowed' : 'bg-slate-50 border-slate-200 focus:border-green-500 cursor-pointer'}`}
+                            dir="ltr"
+                        >
+                            {RECITERS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                        </select>
                     </div>
 
+                    {/* HW Progress bar */}
                     {hwTask && (
-                        <div className="bg-purple-50 text-purple-800 p-2.5 rounded-xl text-center font-bold text-sm mb-5 border border-purple-200 shadow-sm flex items-center justify-center gap-2">
+                        <div className="bg-purple-50 text-purple-800 px-3 py-2 rounded-xl text-center font-bold text-sm border border-purple-200 flex items-center justify-center gap-2">
                             <i className="fas fa-sync-alt text-purple-500"></i>
-                            {t('hwProgress')}: <span className="text-lg mx-1">{loopsCompleted}</span> / {hwTask.requiredRepeats} {t('times')}
+                            {t('hwProgress')}: <span className="text-base mx-1">{loopsCompleted}</span> / {hwTask.requiredRepeats} {t('times')}
                         </div>
                     )}
 
-                    <div className="flex gap-4 mb-6">
-                        <div className="flex-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    {/* From / To Ayah */}
+                    <div className="flex gap-3">
+                        <div className="flex-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                             <label className="block text-xs font-bold text-slate-500 mb-1">{t('fromAyah')}</label>
                             <input type="number" min="1" max={surah.totalAyahs} value={fromAyah} disabled={isPlaying || !!hwTask}
                                 onChange={(e) => setFromAyah(e.target.value)}
-                                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-center font-bold focus:outline-none focus:border-green-500 disabled:opacity-50" />
+                                className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-center font-bold text-sm focus:outline-none focus:border-green-500 disabled:opacity-50" />
                         </div>
-                        <div className="flex-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <div className="flex-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                             <label className="block text-xs font-bold text-slate-500 mb-1">{t('toAyah')}</label>
                             <input type="number" min="1" max={surah.totalAyahs} value={toAyah} disabled={isPlaying || !!hwTask}
                                 onChange={(e) => setToAyah(e.target.value)}
-                                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-center font-bold focus:outline-none focus:border-green-500 disabled:opacity-50" />
+                                className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-center font-bold text-sm focus:outline-none focus:border-green-500 disabled:opacity-50" />
                         </div>
                     </div>
 
-                    <div className={`${hwTask ? 'bg-purple-50 border-purple-100' : 'bg-green-50 border-green-100'} rounded-2xl p-4 flex flex-col items-center justify-center mb-6 border min-h-[140px] relative`}>
-                        <div className="absolute top-3 right-3 flex items-end justify-center gap-1 h-4">
+                    {/* Ayah display */}
+                    <div className={`${hwTask ? 'bg-purple-50 border-purple-100' : 'bg-green-50 border-green-100'} rounded-2xl p-3 border relative`}>
+                        <div className="absolute top-2 right-2 flex items-end gap-1 h-4">
                             {isPlaying ? (
-                                <>
-                                    <div className="audio-bar w-1"></div><div className="audio-bar w-1"></div><div className="audio-bar w-1"></div>
-                                </>
+                                <><div className="audio-bar w-1"></div><div className="audio-bar w-1"></div><div className="audio-bar w-1"></div></>
                             ) : (
-                                <i className={`fas fa-music ${hwTask ? 'text-purple-300/50' : 'text-green-300/50'}`}></i>
+                                <i className={`fas fa-music text-xs ${hwTask ? 'text-purple-300' : 'text-green-300'}`}></i>
                             )}
                         </div>
-                        
-                        <div className="text-center w-full mt-2 mb-3">
-                            <span className={`text-xs font-bold ${hwTask ? 'text-purple-600' : 'text-green-600'} mb-2 block`}>{t('nowPlaying')}: {currentAyah}</span>
-                            {isLoadingText ? (
-                                <div className="flex justify-center py-4"><i className={`fas fa-spinner fa-spin ${hwTask ? 'text-purple-400' : 'text-green-400'} text-2xl`}></i></div>
-                            ) : (
-                                <p className="text-[28px] sm:text-[36px] text-slate-800 text-center leading-normal" dir="rtl" style={{ fontFamily: "'Traditional Arabic', 'me_quran', serif", padding: '0 10px' }}>
-                                    {ayahText} <span className={`${hwTask ? 'text-purple-700' : 'text-green-700'} text-[24px] mx-1 font-sans`}>﴿{Number(currentAyah).toLocaleString('ar-EG')}﴾</span>
-                                </p>
-                            )}
-                        </div>
+                        <span className={`text-xs font-bold ${hwTask ? 'text-purple-600' : 'text-green-600'} mb-1 block text-center`}>{t('nowPlaying')}: {currentAyah}</span>
+                        {isLoadingText ? (
+                            <div className="flex justify-center py-3"><i className={`fas fa-spinner fa-spin ${hwTask ? 'text-purple-400' : 'text-green-400'} text-xl`}></i></div>
+                        ) : (
+                            <p className="text-slate-800 text-center leading-relaxed" dir="rtl" style={{ fontFamily: "'Traditional Arabic', 'me_quran', serif", fontSize: 'clamp(20px, 4vw, 30px)', padding: '0 8px' }}>
+                                {ayahText} <span className={`${hwTask ? 'text-purple-700' : 'text-green-700'} font-sans`} style={{fontSize:'clamp(16px,3vw,22px)'}}>﴿{Number(currentAyah).toLocaleString('ar-EG')}﴾</span>
+                            </p>
+                        )}
                     </div>
 
-                    <div className="flex justify-center gap-4">
-                        <button onClick={handlePlayPause} className={`w-16 h-16 rounded-full ${hwTask ? 'bg-purple-600 hover:bg-purple-500 shadow-purple-500/40' : 'bg-green-600 hover:bg-green-500 shadow-green-500/40'} text-white shadow-lg flex items-center justify-center text-2xl transition-transform hover:scale-105`}>
+                    {/* Play / Stop controls */}
+                    <div className="flex justify-center gap-4 pb-1">
+                        <button onClick={handlePlayPause} className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full ${hwTask ? 'bg-purple-600 hover:bg-purple-500 shadow-purple-500/40' : 'bg-green-600 hover:bg-green-500 shadow-green-500/40'} text-white shadow-lg flex items-center justify-center text-xl sm:text-2xl transition-transform hover:scale-105`}>
                             <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play pl-1'}`}></i>
                         </button>
-                        <button onClick={handleStop} disabled={!isPlaying && currentAyah === fromAyah} className="w-16 h-16 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 flex items-center justify-center text-xl transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100">
+                        <button onClick={handleStop} disabled={!isPlaying && currentAyah === fromAyah} className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 flex items-center justify-center text-lg sm:text-xl transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100">
                             <i className="fas fa-stop"></i>
                         </button>
                     </div>
                 </div>
-                
+
                 <audio ref={audioRef} src={audioSrc} onEnded={handleEnded} preload="auto" />
             </div>
         </div>
     );
 }
 
+// ── Interactive Word-by-Word Mushaf Page ─────────────────────────────────────
+function InteractiveMushafPage({ pageNum, mistakes, onWordClick }) {
+    const [lines, setLines] = useState({});
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const load = async () => {
+            setLoading(true);
+            try {
+                const res = await fetch(`https://api.quran.com/api/v4/verses/by_page/${pageNum}?words=true&word_fields=text_uthmani`);
+                const data = await res.json();
+                const words = [];
+                data.verses.forEach(verse => verse.words.forEach(word => words.push(word)));
+                
+                const grouped = {};
+                words.forEach(w => {
+                    const ln = w.line_number;
+                    if (!grouped[ln]) grouped[ln] = [];
+                    grouped[ln].push(w);
+                });
+                setLines(grouped);
+            } catch(e) { console.error("Failed to load page", e); }
+            setLoading(false);
+        };
+        if(pageNum >= 1 && pageNum <= 604) load();
+    }, [pageNum]);
+
+    if (loading) return <div className="flex-1 flex items-center justify-center min-h-[50vh]"><i className="fas fa-spinner fa-spin text-3xl text-green-500"></i></div>;
+
+    return (
+        <div className="flex-1 flex flex-col justify-between p-4 sm:p-8 bg-[#fdfaf6] min-h-[50vh] md:min-h-[80vh] relative shadow-[-10px_0_20px_rgba(0,0,0,0.05)_inset]" dir="rtl">
+            <div className="flex-1 flex flex-col justify-between max-w-full h-full">
+                {Object.keys(lines).sort((a,b)=>Number(a)-Number(b)).map(lineNum => {
+                    const lineWords = lines[lineNum];
+                    const isCentered = lineWords.length < 5 || (lineWords.length > 0 && lineWords[0].text_uthmani?.includes('بِسۡمِ'));
+                    return (
+                        <div key={lineNum} className="flex w-full" style={{ justifyContent: isCentered ? 'center' : 'space-between', gap: '6px' }}>
+                            {lineWords.map((word, idx) => {
+                                const wordKey = `${pageNum}-${word.line_number}-${word.position}-${word.id}`;
+                                const mistakeColor = mistakes[wordKey];
+                                const bg = mistakeColor === 'red' ? 'bg-red-200 text-red-800 border-b-2 border-red-500' :
+                                           mistakeColor === 'orange' ? 'bg-orange-200 text-orange-800 border-b-2 border-orange-500' :
+                                           mistakeColor === 'yellow' ? 'bg-yellow-200 text-yellow-800 border-b-2 border-yellow-500' : 'hover:text-green-600 border-b-2 border-transparent hover:border-green-300';
+                                return (
+                                    <span key={idx} onClick={() => onWordClick(wordKey)}
+                                        className={`cursor-pointer transition-all px-0.5 rounded ${bg} flex items-center`}
+                                        style={{ fontFamily: "'me_quran', 'Amiri Quran', 'Traditional Arabic', serif", fontSize: 'clamp(18px, 2.3vw, 26px)', lineHeight: '1.8' }}
+                                        title={word.translation?.text || ''}>
+                                        {word.text_uthmani || word.text}
+                                    </span>
+                                );
+                            })}
+                        </div>
+                    );
+                })}
+            </div>
+            <div className="text-center mt-4 text-xs text-slate-400 font-bold border-t border-slate-200/50 pt-2">{pageNum}</div>
+        </div>
+    );
+}
+
+// ── Main 2-Page Viewer Modal ─────────────────────────────────────────────────
+function MushafViewerModal({ surah, onClose, t, lang }) {
+    const startPage = SURAH_START_PAGES[surah.id - 1];
+    const [currentPage, setCurrentPage] = useState(startPage);
+    const [mistakes, setMistakes] = useState({});
+
+    const rightPageNum = currentPage % 2 !== 0 ? currentPage : currentPage - 1;
+    const leftPageNum = rightPageNum + 1;
+
+    const nextPage = () => { if (leftPageNum < 604) setCurrentPage(leftPageNum + 1); };
+    const prevPage = () => { if (rightPageNum > 1) setCurrentPage(rightPageNum - 1); };
+
+    const handleWordClick = (wordKey) => {
+        setMistakes(prev => {
+            const current = prev[wordKey];
+            let next = 'red';
+            if (current === 'red') next = 'orange';
+            else if (current === 'orange') next = 'yellow';
+            else if (current === 'yellow') next = null;
+            const updated = { ...prev };
+            if (next) updated[wordKey] = next; else delete updated[wordKey];
+            return updated;
+        });
+    };
+
+    return (
+        <div className="fixed inset-0 z-[300] flex flex-col bg-slate-900/95 backdrop-blur-md animate-fade-in-up">
+            <div className="flex flex-wrap items-center justify-between px-4 py-3 bg-slate-800 text-white shadow-md gap-3">
+                <div className="flex items-center gap-3">
+                    <button onClick={onClose} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-700 hover:bg-red-500 flex items-center justify-center transition-colors"><i className="fas fa-times text-lg md:text-xl"></i></button>
+                    <h2 className="text-lg md:text-xl font-bold font-['Traditional_Arabic']">{getSurahPrimary(surah, lang)}</h2>
+                </div>
+                <div className="flex items-center gap-2 md:gap-4 text-[10px] md:text-xs font-bold bg-slate-900/50 px-3 py-1.5 rounded-full">
+                    <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-400"></span> خطأ حفظ</span>
+                    <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-orange-400"></span> خطأ تجويد</span>
+                    <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-400"></span> تردد</span>
+                </div>
+                <div className="flex items-center gap-2 md:gap-4" dir="ltr">
+                    <button onClick={prevPage} disabled={rightPageNum <= 1} className="px-3 md:px-4 py-1.5 md:py-2 bg-slate-700 hover:bg-green-600 disabled:opacity-50 rounded-lg font-bold transition-colors text-sm"><i className="fas fa-chevron-left md:mr-2"></i> <span className="hidden md:inline">السابق</span></button>
+                    <span className="font-bold text-yellow-400 w-20 md:w-24 text-center text-sm">صفحة {rightPageNum}-{leftPageNum}</span>
+                    <button onClick={nextPage} disabled={leftPageNum >= 604} className="px-3 md:px-4 py-1.5 md:py-2 bg-slate-700 hover:bg-green-600 disabled:opacity-50 rounded-lg font-bold transition-colors text-sm"><span className="hidden md:inline">التالي</span> <i className="fas fa-chevron-right md:ml-2"></i></button>
+                </div>
+            </div>
+            <div className="flex-1 overflow-auto flex items-center justify-center p-2 md:p-4">
+                <div className="flex flex-col lg:flex-row shadow-2xl ring-4 ring-yellow-600/30 bg-[#fdfaf6] max-w-7xl w-full mx-auto" dir="rtl">
+                    <InteractiveMushafPage pageNum={rightPageNum} mistakes={mistakes} onWordClick={handleWordClick} />
+                    {leftPageNum <= 604 && (
+                        <div className="border-t-2 lg:border-t-0 lg:border-r-2 border-[#e5d5b5] flex-1 flex flex-col">
+                            <InteractiveMushafPage pageNum={leftPageNum} mistakes={mistakes} onWordClick={handleWordClick} />
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ── Sticker Picker ───────────────────────────────────────────────────────────
-function StickerPicker({ onSelect, onClose, isAr }) {
+function StickerPicker({ onSelect, onClose, t }) {
     const [activeSet, setActiveSet] = useState('all');
     const sets = [
-        { key:'all',     label: isAr?'الكل':'All',       items: ALL_STICKERS },
-        { key:'stars',   label: isAr?'نجوم':'Stars',     items: STICKER_SETS.stars },
-        { key:'animals', label: isAr?'حيوانات':'Animals',items: STICKER_SETS.animals },
-        { key:'nature',  label: isAr?'طبيعة':'Nature',   items: STICKER_SETS.nature },
-        { key:'trophies',label: isAr?'جوائز':'Trophies', items: STICKER_SETS.trophies },
-        { key:'hearts',  label: isAr?'قلوب':'Hearts',    items: STICKER_SETS.hearts },
-        { key:'quran',   label: isAr?'إسلامية':'Islamic',items: STICKER_SETS.quran },
+        { key:'all',     label: t('allStickers'),       items: ALL_STICKERS },
+        { key:'stars',   label: t('stickerStars'),     items: STICKER_SETS.stars },
+        { key:'animals', label: t('stickerAnimals'), items: STICKER_SETS.animals },
+        { key:'nature',  label: t('stickerNature'),   items: STICKER_SETS.nature },
+        { key:'trophies',label: t('stickerTrophies'), items: STICKER_SETS.trophies },
+        { key:'hearts',  label: t('stickerHearts'),    items: STICKER_SETS.hearts },
+        { key:'quran',   label: t('stickerQuran'), items: STICKER_SETS.quran },
     ];
     const cur = sets.find(s => s.key === activeSet) || sets[0];
     return (
         <div className="mt-2 bg-white rounded-2xl border-2 border-yellow-300 shadow-lg p-3 z-30">
             <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-600">{isAr ? 'اختر ملصقاً 🎁' : 'Choose a sticker 🎁'}</span>
+                <span className="text-xs font-bold text-slate-600">{t('chooseStickerPrompt')}</span>
                 <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg leading-none px-1">✕</button>
             </div>
             <div className="flex gap-1 flex-wrap mb-2">
@@ -733,7 +1223,7 @@ function StickerPicker({ onSelect, onClose, isAr }) {
 }
 
 // ── Juz Visual Report ────────────────────────────────────────────────────────
-function JuzVisualReport({ juzNum, surahs, juzData, juzPlanId, isAr, t, totalJuzAyahs, onScrollToSurah }) {
+function JuzVisualReport({ juzNum, surahs, juzData, juzPlanId, lang, t, totalJuzAyahs, onScrollToSurah }) {
     const plan = JUZ_WEEKLY_PLANS.find(p => p.id === (juzPlanId || 'none')) || JUZ_WEEKLY_PLANS[0];
     const isJuz30 = juzNum === 30;
 
@@ -773,7 +1263,7 @@ function JuzVisualReport({ juzNum, surahs, juzData, juzPlanId, isAr, t, totalJuz
 
     const remaining = totalJuzAyahs - stats.totalMemorized;
     const pct = Math.round((stats.totalMemorized / totalJuzAyahs) * 100);
-    const eta = plan.ayahsPerWeek > 0 ? formatJuzETA(remaining, plan.ayahsPerWeek, isAr) : null;
+    const eta = plan.ayahsPerWeek > 0 ? formatJuzETA(remaining, plan.ayahsPerWeek, lang, t) : null;
 
     const accentColor = isJuz30 ? '#15803d' : '#d97706';
     const lightBg = isJuz30 ? 'bg-green-50' : 'bg-amber-50';
@@ -790,13 +1280,13 @@ function JuzVisualReport({ juzNum, surahs, juzData, juzPlanId, isAr, t, totalJuz
                     <div>
                         {plan.ayahsPerWeek > 0 ? (
                             <>
-                                <h3 className="font-bold text-teal-900 text-sm sm:text-base">{t('juzWeeklyPlan')}: {isAr ? plan.arLabel : plan.enLabel}</h3>
+                                <h3 className="font-bold text-teal-900 text-sm sm:text-base">{t('juzWeeklyPlan')}: {planJuzLabel(plan, lang)}</h3>
                                 <p className="text-xs sm:text-sm text-teal-700 mt-1"><strong>{t('remainingAyahs')}:</strong> {remaining} {t('ayahs')}</p>
                             </>
                         ) : (
                             <>
-                                <h3 className="font-bold text-teal-900 text-sm sm:text-base">{isAr ? 'لم يتم تحديد خطة للجزء' : 'No Juz Plan Set'}</h3>
-                                <p className="text-xs sm:text-sm text-teal-700 mt-1 opacity-80">{isAr ? 'اختر خطتك الأسبوعية من الأعلى.' : 'Select your weekly plan from above.'}</p>
+                                <h3 className="font-bold text-teal-900 text-sm sm:text-base">{t('noJuzPlanTitle')}</h3>
+                                <p className="text-xs sm:text-sm text-teal-700 mt-1 opacity-80">{t('noJuzPlanHint')}</p>
                             </>
                         )}
                     </div>
@@ -804,7 +1294,7 @@ function JuzVisualReport({ juzNum, surahs, juzData, juzPlanId, isAr, t, totalJuz
                 {plan.ayahsPerWeek > 0 && (
                     <div className="bg-white border border-teal-100 rounded-xl p-3 px-6 text-center shadow-sm shrink-0 w-full sm:w-auto">
                         <p className="text-[10px] sm:text-xs text-gray-500 mb-1">{t('etaToFinish')}</p>
-                        <p className="font-black text-teal-600 text-sm sm:text-lg" dir={isAr?"rtl":"ltr"}>
+                        <p className="font-black text-teal-600 text-sm sm:text-lg" dir={isRtlLang(lang)?"rtl":"ltr"}>
                             {eta}
                         </p>
                     </div>
@@ -831,7 +1321,7 @@ function JuzVisualReport({ juzNum, surahs, juzData, juzPlanId, isAr, t, totalJuz
                                 return (
                                     <button key={s.id} onClick={() => onScrollToSurah && onScrollToSurah(s.id)} className="w-full text-start bg-white p-3 rounded-xl shadow-sm border border-blue-50 hover:border-blue-300 transition-all group">
                                         <div className="flex justify-between items-center mb-2 text-xs">
-                                            <span className="font-bold text-slate-700 group-hover:text-blue-700">{isAr ? s.name : s.enName}</span>
+                                            <span className="font-bold text-slate-700 group-hover:text-blue-700">{getSurahPrimary(s, lang)}</span>
                                             <span className="text-blue-600 font-bold" dir="ltr">{m} / {s.totalAyahs}</span>
                                         </div>
                                         <div className="w-full bg-blue-100 rounded-full h-1.5">
@@ -851,7 +1341,7 @@ function JuzVisualReport({ juzNum, surahs, juzData, juzPlanId, isAr, t, totalJuz
                         <div className="flex flex-wrap gap-2 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar content-start">
                             {stats.done.length > 0 ? stats.done.map(s => (
                                 <button key={s.id} onClick={() => onScrollToSurah && onScrollToSurah(s.id)} className="bg-white text-green-700 px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold border border-green-200 shadow-sm hover:bg-green-600 hover:text-white transition-colors">
-                                    {isAr ? s.name : s.enName}
+                                    {getSurahPrimary(s, lang)}
                                 </button>
                             )) : <p className="text-xs text-slate-500 my-auto w-full text-center">{t('noData')}</p>}
                         </div>
@@ -866,7 +1356,7 @@ function JuzVisualReport({ juzNum, surahs, juzData, juzPlanId, isAr, t, totalJuz
                             <div className="flex flex-wrap gap-2 overflow-y-auto custom-scrollbar max-h-[80px] content-start">
                                 {stats.needsRev.length > 0 ? stats.needsRev.map(s => (
                                     <button key={s.id} onClick={() => onScrollToSurah && onScrollToSurah(s.id)} className="bg-white text-red-600 px-3 py-1.5 rounded-lg text-[10px] font-bold border border-red-200 shadow-sm hover:bg-red-50">
-                                        {isAr ? s.name : s.enName}
+                                        {getSurahPrimary(s, lang)}
                                     </button>
                                 )) : <span className="text-xs text-slate-400 my-auto">—</span>}
                             </div>
@@ -879,7 +1369,7 @@ function JuzVisualReport({ juzNum, surahs, juzData, juzPlanId, isAr, t, totalJuz
                             <div className="flex flex-wrap gap-2 overflow-y-auto custom-scrollbar max-h-[80px] content-start">
                                 {stats.oldRev.length > 0 ? stats.oldRev.map(s => (
                                     <button key={s.id} onClick={() => onScrollToSurah && onScrollToSurah(s.id)} className="bg-white text-orange-600 px-3 py-1.5 rounded-lg text-[10px] font-bold border border-orange-200 shadow-sm hover:bg-orange-50">
-                                        {isAr ? s.name : s.enName}
+                                        {getSurahPrimary(s, lang)}
                                     </button>
                                 )) : <span className="text-xs text-slate-400 my-auto">—</span>}
                             </div>
@@ -892,7 +1382,7 @@ function JuzVisualReport({ juzNum, surahs, juzData, juzPlanId, isAr, t, totalJuz
                             <div className="flex flex-wrap gap-2 overflow-y-auto custom-scrollbar max-h-[80px] content-start">
                                 {stats.recentRev.length > 0 ? stats.recentRev.map(s => (
                                     <button key={s.id} onClick={() => onScrollToSurah && onScrollToSurah(s.id)} className="bg-white text-green-600 px-3 py-1.5 rounded-lg text-[10px] font-bold border border-green-200 shadow-sm hover:bg-green-50">
-                                        {isAr ? s.name : s.enName}
+                                        {getSurahPrimary(s, lang)}
                                     </button>
                                 )) : <span className="text-xs text-slate-400 my-auto">—</span>}
                             </div>
@@ -905,19 +1395,20 @@ function JuzVisualReport({ juzNum, surahs, juzData, juzPlanId, isAr, t, totalJuz
 }
 
 // ── Juz Plan Selector ────────────────────────────────────────────────────────
-function JuzPlanSelector({ juzNum, planId, onSetPlan, isReadOnly, isAr, t }) {
+function JuzPlanSelector({ juzNum, planId, onSetPlan, isReadOnly, lang, t }) {
     const [open, setOpen] = useState(false);
     const plan = JUZ_WEEKLY_PLANS.find(p => p.id === (planId || 'none')) || JUZ_WEEKLY_PLANS[0];
     const isJuz30 = juzNum === 30;
     const accentBg = 'bg-white/20 hover:bg-white/30';
     const accentBorder = 'border-white/30';
+    const isRtl = isRtlLang(lang);
 
     if (isReadOnly) {
         if (plan.ayahsPerWeek === 0) return null;
         return (
             <div className="flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-4 sm:py-2 rounded-xl text-white text-[9px] sm:text-xs font-bold bg-white/20 border border-white/30 transition-colors shadow-sm w-full max-w-[130px] sm:max-w-max">
                 <i className="fas fa-calendar-week"></i>
-                <span className="truncate">{isAr ? plan.arLabel : plan.enLabel}</span>
+                <span className="truncate">{planJuzLabel(plan, lang)}</span>
             </div>
         );
     }
@@ -927,20 +1418,20 @@ function JuzPlanSelector({ juzNum, planId, onSetPlan, isReadOnly, isAr, t }) {
             <button onClick={() => setOpen(!open)}
                 className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-4 sm:py-2 rounded-xl text-white text-[9px] sm:text-xs font-bold ${accentBg} border ${accentBorder} transition-colors shadow-sm w-full max-w-[130px] sm:max-w-max`}>
                 <i className="fas fa-calendar-week"></i>
-                <span className="truncate">{plan.ayahsPerWeek > 0 ? (isAr ? plan.arLabel : plan.enLabel) : t('setJuzPlan')}</span>
+                <span className="truncate">{plan.ayahsPerWeek > 0 ? planJuzLabel(plan, lang) : t('setJuzPlan')}</span>
                 <i className={`fas fa-chevron-${open ? 'up' : 'down'} text-[8px] sm:text-[10px] pr-1`}></i>
             </button>
             {open && (
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-                    <div className="absolute top-full mt-2 bg-white rounded-2xl shadow-xl border border-slate-200 p-3 z-50 min-w-[200px]" style={{[isAr?'right':'left']:0}}>
+                    <div className="absolute top-full mt-2 bg-white rounded-2xl shadow-xl border border-slate-200 p-3 z-50 min-w-[200px]" style={{[isRtl?'right':'left']:0}}>
                         <p className="text-xs text-slate-500 font-medium mb-2 px-1">{t('juzPlanDesc')}</p>
                         <div className="space-y-1">
                             {JUZ_WEEKLY_PLANS.map(p => (
                                 <button key={p.id} onClick={() => { onSetPlan(p.id); setOpen(false); }}
                                     className={`w-full text-start px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center justify-between
                                         ${planId === p.id ? (isJuz30 ? 'bg-green-100 text-green-800 font-bold' : 'bg-amber-100 text-amber-800 font-bold') : 'hover:bg-slate-50 text-slate-700'}`}>
-                                    <span>{isAr ? p.arLabel : p.enLabel}</span>
+                                    <span>{planJuzLabel(p, lang)}</span>
                                     {planId === p.id && <i className="fas fa-check text-xs"></i>}
                                 </button>
                             ))}
@@ -953,16 +1444,17 @@ function JuzPlanSelector({ juzNum, planId, onSetPlan, isReadOnly, isAr, t }) {
 }
 
 // ── Full Quran Plan Selector ────────────────────────────────────────────────
-function FullQuranPlanSelector({ planId, onSetPlan, isReadOnly, isAr, t }) {
+function FullQuranPlanSelector({ planId, onSetPlan, isReadOnly, lang, t }) {
     const [open, setOpen] = useState(false);
     const plan = MEMORIZATION_PLANS.find(p => p.id === (planId || 'none')) || MEMORIZATION_PLANS[0];
+    const isRtl = isRtlLang(lang);
 
     if (isReadOnly) {
         if (plan.id === 'none') return null;
         return (
             <div className="flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-4 sm:py-2 rounded-xl text-white text-[9px] sm:text-xs font-bold bg-white/20 border border-white/30 transition-colors shadow-sm w-full max-w-[130px] sm:max-w-max">
                 <i className="fas fa-calendar-alt"></i>
-                <span className="truncate">{isAr ? plan.arTitle : plan.enTitle}</span>
+                <span className="truncate">{planMemTitle(plan, lang)}</span>
             </div>
         );
     }
@@ -972,20 +1464,20 @@ function FullQuranPlanSelector({ planId, onSetPlan, isReadOnly, isAr, t }) {
             <button onClick={() => setOpen(!open)}
                 className="flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-4 sm:py-2 rounded-xl text-white text-[9px] sm:text-xs font-bold bg-green-600 hover:bg-green-500 border border-green-500 transition-colors shadow-sm w-full max-w-[130px] sm:max-w-max">
                 <i className="fas fa-calendar-alt"></i>
-                <span className="truncate max-w-[90px] sm:max-w-[160px]">{plan.id !== 'none' ? (isAr ? plan.arTitle : plan.enTitle) : t('setPlan')}</span>
+                <span className="truncate max-w-[90px] sm:max-w-[160px]">{plan.id !== 'none' ? planMemTitle(plan, lang) : t('setPlan')}</span>
                 <i className={`fas fa-chevron-${open ? 'up' : 'down'} text-[8px] sm:text-[10px] pr-1`}></i>
             </button>
             {open && (
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-                    <div className="absolute top-full mt-2 bg-white rounded-2xl shadow-xl border border-slate-200 p-3 z-50 min-w-[250px]" style={{[isAr?'right':'left']:0}}>
+                    <div className="absolute top-full mt-2 bg-white rounded-2xl shadow-xl border border-slate-200 p-3 z-50 min-w-[250px]" style={{[isRtl?'right':'left']:0}}>
                         <p className="text-xs text-slate-500 font-medium mb-2 px-1">{t('selectPlanMsg')}</p>
                         <div className="space-y-1 max-h-[60vh] overflow-y-auto custom-scrollbar">
                             {MEMORIZATION_PLANS.map(p => (
                                 <button key={p.id} onClick={() => { onSetPlan(p.id); setOpen(false); }}
                                     className={`w-full text-start px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center justify-between
                                         ${planId === p.id ? 'bg-green-100 text-green-800 font-bold' : 'hover:bg-slate-50 text-slate-700'}`}>
-                                    <span className="truncate">{isAr ? p.arTitle : p.enTitle}</span>
+                                    <span className="truncate">{planMemTitle(p, lang)}</span>
                                     {planId === p.id && <i className="fas fa-check text-xs ml-2 shrink-0"></i>}
                                 </button>
                             ))}
@@ -998,7 +1490,7 @@ function FullQuranPlanSelector({ planId, onSetPlan, isReadOnly, isAr, t }) {
 }
 
 // ── Child-Friendly Surah Card for Juz 29/30 ─────────────────────────────────
-function JuzSurahCard({ surah, juzData, onUpdate, isReadOnly, isAr, t, juzNum, onPlayAudio }) {
+function JuzSurahCard({ surah, juzData, onUpdate, isReadOnly, lang, t, juzNum, onPlayAudio }) {
     const data = juzData[surah.id] || { memorized: 0, revisions: {}, stickers: [] };
     const { memorized, revisions, stickers } = data;
     const isComplete = memorized === surah.totalAyahs;
@@ -1035,13 +1527,16 @@ function JuzSurahCard({ surah, juzData, onUpdate, isReadOnly, isAr, t, juzNum, o
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{ background:accentColor }}>{surah.id}</span>
-                        <h3 className="text-base font-bold text-slate-800 truncate">{isAr ? surah.name : surah.enName}</h3>
+                        <h3 className="text-base font-bold text-slate-800 truncate">{getSurahPrimary(surah, lang)}</h3>
                         <button onClick={() => onPlayAudio({ surah, hwTask: null })} className="text-green-500 hover:text-green-700 bg-green-50 hover:bg-green-100 w-6 h-6 rounded-full flex items-center justify-center transition-colors" title={t('listenSurah')}>
                             <i className="fas fa-headphones-alt text-xs"></i>
                         </button>
+                        <button onClick={() => setMushafSurah(surah)} className="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 w-6 h-6 rounded-full flex items-center justify-center transition-colors mr-1" title="عرض المصحف">
+                            <i className="fas fa-book-open text-xs"></i>
+                        </button>
                         {isComplete && <span className="text-yellow-500 text-lg anim-tada">🌟</span>}
                     </div>
-                    <p className="text-xs text-slate-400 mt-0.5">{isAr ? surah.enName : surah.enMeaning} • {surah.totalAyahs} {t('ayahs')}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{getSurahSecondary(surah, lang)} • {surah.totalAyahs} {t('ayahs')}</p>
                 </div>
                 <button onClick={toggleComplete} className={`w-9 h-9 rounded-full flex items-center justify-center text-lg transition-all shrink-0 ${isComplete ? 'text-yellow-500 bg-yellow-100 shadow-md scale-110' : 'text-slate-300 hover:text-yellow-400 bg-slate-50 hover:bg-yellow-50'}`}>
                     {isComplete ? '✅' : '☐'}
@@ -1114,7 +1609,7 @@ function JuzSurahCard({ surah, juzData, onUpdate, isReadOnly, isAr, t, juzNum, o
                     )}
                 </div>
                 {showStickerPicker && !isReadOnly && (
-                    <StickerPicker onSelect={addSticker} onClose={() => setShowStickerPicker(false)} isAr={isAr} />
+                    <StickerPicker onSelect={addSticker} onClose={() => setShowStickerPicker(false)} t={t} />
                 )}
             </div>
             {!isReadOnly && (
@@ -1128,19 +1623,21 @@ function JuzSurahCard({ surah, juzData, onUpdate, isReadOnly, isAr, t, juzNum, o
 
 // ── Certificate Sticker Options ──────────────────────────────────────────────
 const CERT_STICKERS = [
-    '🌟','🏆','🥇','👑','🎖️','🌙','📖','🤲','🕊️','💎','🌺','🌈',
+    '🌟','🏆','🥇','👑','🎖️','🌙','📖','🤲','🕊️','💎','🌺',
     '⭐','🎉','🎊','🦋','🌸','💫','✨','🌠','🏅','🎗️','🌿','💚'
 ];
 
 // ── Unified Certificate Display ──────────────────────────────────────────────
 function CertDisplay({ cert, studentName }) {
-    const certLang = cert?.certLang || 'ar';
-    const isRtl = certLang === 'ar';
-    const cT = (k) => tDict[certLang][k] || k;
-    const dateStr = new Date(cert.timestamp).toLocaleDateString('en-US');
-    const reason = cert.reason || (isRtl ? 'إتمام حفظ جزء كامل' : 'Completing a whole Juz');
+    const certLang = normLang(cert?.certLang || 'ar');
+    const isRtl = isRtlLang(certLang);
+    const cDict = uiLocalePack(certLang);
+    const cT = (k) => cDict[k] ?? tDict.en[k] ?? k;
+    const dateStr = new Date(cert.timestamp).toLocaleDateString(localeForLang(certLang));
+    const defReason = (cDict.certReasons && cDict.certReasons.find(r => r.id === 'juz_complete'))?.label || (tDict.en.certReasons.find(r => r.id === 'juz_complete')?.label);
+    const reason = cert.reason || defReason;
     const sticker = cert.sticker || '🏅';
-    const teacherSig = cert.teacherSig || (isRtl ? 'معلم القرآن' : 'معلم القران');
+    const teacherSig = cert.teacherSig || cT('certTeacherSig');
 
     return (
         <div style={{
@@ -1166,8 +1663,15 @@ function CertDisplay({ cert, studentName }) {
                 direction: isRtl ? 'rtl' : 'ltr', boxSizing:'border-box',
             }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{ width:'58px', height:'58px', borderRadius:'50%', border:'2.5px solid #d0a53f', background:'white', marginBottom:'8px', flexShrink:0, boxShadow:'0 2px 6px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#124028', fontSize: '26px' }}>
-                        <i className="fas fa-book-open"></i>
+                    <div style={{
+                            width:'58px', height:'58px', borderRadius:'50%',
+                            border:'2.5px solid #d0a53f',
+                            background:'linear-gradient(160deg,#ffffff,#f0fdf4)',
+                            marginBottom:'8px', flexShrink:0,
+                            boxShadow:'0 2px 6px rgba(0,0,0,0.1)',
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                        }} aria-hidden="true">
+                        <i className="fas fa-book" style={{ fontSize:'26px', color:'#124028' }}></i>
                     </div>
                     <p style={{ color:'#124028', fontWeight:'700', letterSpacing:'4px', fontSize:'12px', textTransform:'uppercase', margin:'0 0 4px' }}>
                         {cT('certInNameOfAllah')}
@@ -1227,26 +1731,27 @@ function CertDisplay({ cert, studentName }) {
 }
 
 // ── NEW PROFESSIONAL CERTIFICATE WIZARD (SPLIT VIEW) ─────────────────────────
-function CertWizard({ isAr, t, lang, pct, juzNum, studentName, onClose, onSave }) {
-    const [certLang, setCertLang] = useState(lang || 'ar');
+function CertWizard({ t, lang, pct, juzNum, studentName, onClose, onSave }) {
+    const [certLang, setCertLang] = useState(normLang(lang || 'ar'));
     const [reasonId, setReasonId] = useState('');
     const [customReason, setCustomReason] = useState('');
     const [sticker, setSticker] = useState('🏅');
-    const [teacherSig, setTeacherSig] = useState('معلم القرآن');
+    const [teacherSig, setTeacherSig] = useState(() => (uiLocalePack(lang).certTeacherSig ?? tDict.en.certTeacherSig));
 
-    const cT = (k) => tDict[certLang][k] || k;
-    const reasons = certLang === 'ar' ? (tDict.ar.certReasons_ar || []) : (tDict.en.certReasons_en || []);
+    const cDict = uiLocalePack(certLang);
+    const cT = (k) => cDict[k] ?? tDict.en[k] ?? k;
+    const reasons = cDict.certReasons || tDict.en.certReasons || [];
     const selectedReason = reasons.find(r => r.id === reasonId);
     const finalReason = reasonId === 'custom' ? customReason : (selectedReason?.label || '');
 
     const certPreview = {
-        certLang, reason: finalReason || (certLang === 'ar' ? 'سبب الشهادة سيظهر هنا...' : 'Reason will appear here...'), 
+        certLang, reason: finalReason || cT('certCustomReasonPlaceholder'), 
         sticker, teacherSig,
         timestamp: Date.now(), percentage: pct,
     };
 
     return (
-        <div className="fixed inset-0 z-[160] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4" dir={isAr?'rtl':'ltr'}>
+        <div className="fixed inset-0 z-[160] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4" dir={isRtlLang(lang)?'rtl':'ltr'}>
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-6xl h-[95vh] sm:h-[85vh] flex flex-col overflow-hidden animate-fade-in-up border border-slate-200">
                 <div className="bg-slate-50 border-b border-slate-200 p-4 sm:px-6 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-3">
@@ -1268,9 +1773,13 @@ function CertWizard({ isAr, t, lang, pct, juzNum, studentName, onClose, onSave }
                                     <span className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[11px] text-slate-500">1</span>
                                     {t('certWizardStep1').replace('١. ', '').replace('1. ', '')}
                                 </h3>
-                                <div className="flex p-1 bg-slate-100 rounded-xl">
-                                    <button onClick={()=>setCertLang('ar')} className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${certLang==='ar'?'bg-white text-green-700 shadow-sm border border-slate-200':'text-slate-500 hover:text-slate-700'}`}>عربي</button>
-                                    <button onClick={()=>setCertLang('en')} className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${certLang==='en'?'bg-white text-blue-700 shadow-sm border border-slate-200':'text-slate-500 hover:text-slate-700'}`}>English</button>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-1 bg-slate-100 rounded-xl">
+                                    {UI_LANGS.map(code => (
+                                        <button key={code} type="button" onClick={()=>setCertLang(code)}
+                                            className={`py-2 rounded-lg font-bold text-xs sm:text-sm transition-all ${certLang===code?'bg-white text-green-700 shadow-sm border border-slate-200':'text-slate-500 hover:text-slate-700'}`}>
+                                            {LANG_LABELS[code] || code}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
                             <div>
@@ -1330,7 +1839,7 @@ function CertWizard({ isAr, t, lang, pct, juzNum, studentName, onClose, onSave }
                     <div className="flex-1 bg-slate-200/60 flex items-center justify-center relative shadow-inner overflow-hidden">
                         <div className="absolute top-4 left-4 right-4 flex justify-center pointer-events-none z-10">
                             <span className="bg-slate-800/60 text-white text-[10px] uppercase tracking-wider px-3 py-1 rounded-full backdrop-blur-sm font-bold shadow-sm">
-                                {isAr ? 'معاينة حية' : 'Live Preview'}
+                                {t('livePreview')}
                             </span>
                         </div>
                         <div className="w-0 h-0 flex items-center justify-center">
@@ -1348,7 +1857,7 @@ function CertWizard({ isAr, t, lang, pct, juzNum, studentName, onClose, onSave }
 }
 
 // ── Juz Section (29 or 30) ───────────────────────────────────────────────────
-function JuzSection({ juzNum, surahs, student, onUpdate, isReadOnly, isAr, t, onIssueCert, onViewCert, getBadge, lang, onReset, onPlayAudio, onClearHW }) {
+function JuzSection({ juzNum, surahs, student, onUpdate, isReadOnly, t, onIssueCert, onViewCert, getBadge, lang, onReset, onPlayAudio, onClearHW }) {
     const juzKey = `juz${juzNum}Data`;
     const planKey = `juz${juzNum}PlanId`;
     const certKey = `juz${juzNum}Certificates`;
@@ -1368,7 +1877,7 @@ function JuzSection({ juzNum, surahs, student, onUpdate, isReadOnly, isAr, t, on
 
     const plan = JUZ_WEEKLY_PLANS.find(p => p.id === juzPlanId) || JUZ_WEEKLY_PLANS[0];
     const remaining = totalJuzAyahs - stats.memorized;
-    const eta = plan.ayahsPerWeek > 0 ? formatJuzETA(remaining, plan.ayahsPerWeek, isAr) : null;
+    const eta = plan.ayahsPerWeek > 0 ? formatJuzETA(remaining, plan.ayahsPerWeek, lang, t) : null;
 
     const handleUpdate = (surahId, updates) => {
         const existing = juzData[surahId] || { memorized:0, revisions:{}, stickers:[] };
@@ -1400,12 +1909,12 @@ function JuzSection({ juzNum, surahs, student, onUpdate, isReadOnly, isAr, t, on
             {!isReadOnly && student.listeningTasks && student.listeningTasks.length > 0 && (
                 <div className="space-y-3">
                     {student.listeningTasks.map(task => (
-                        <TeacherHWAlert key={task.id} task={task} onClear={() => onClearHW(task.id)} isAr={isAr} t={t} />
+                        <TeacherHWAlert key={task.id} task={task} onClear={() => onClearHW(task.id)} lang={lang} t={t} />
                     ))}
                 </div>
             )}
 
-            <JuzVisualReport juzNum={juzNum} surahs={surahs} juzData={juzData} juzPlanId={juzPlanId} isAr={isAr} t={t} totalJuzAyahs={totalJuzAyahs} onScrollToSurah={scrollToSurahCard} />
+            <JuzVisualReport juzNum={juzNum} surahs={surahs} juzData={juzData} juzPlanId={juzPlanId} lang={lang} t={t} totalJuzAyahs={totalJuzAyahs} onScrollToSurah={scrollToSurahCard} />
 
             <div className={`bg-white rounded-3xl shadow-sm border ${certAccentBorder} p-5`}>
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
@@ -1418,12 +1927,12 @@ function JuzSection({ juzNum, surahs, student, onUpdate, isReadOnly, isAr, t, on
                 {juzCerts.length === 0 ? (
                     <div className={`text-center py-6 rounded-2xl border-2 border-dashed ${isJuz30 ? 'border-green-200 text-green-400' : 'border-amber-100 text-amber-400'}`}>
                         <i className="fas fa-certificate text-3xl mb-2 opacity-30"></i>
-                        <p className="text-xs font-medium opacity-60">{isAr ? 'لا توجد شهادات بعد. ابدأ بالحفظ واحصل على أولى شهاداتك!' : 'No certificates yet. Start memorizing to earn your first certificate!'}</p>
+                        <p className="text-xs font-medium opacity-60">{t('noCertificatesYet')}</p>
                     </div>
                 ) : (
                     <div className="flex flex-wrap gap-3">
                         {juzCerts.map((cert) => {
-                            const badge = getBadge(cert.percentage, cert.certLang || lang);
+                            const cl = normLang(cert.certLang || lang);
                             return (
                                 <button key={cert.id} onClick={() => onViewCert(cert, juzNum)}
                                     className={`flex items-center gap-3 bg-gradient-to-l from-yellow-50/50 to-white min-w-[200px] border border-yellow-100 p-3 rounded-2xl hover:shadow-md hover:border-yellow-300 transition-all text-start relative group`}>
@@ -1432,10 +1941,9 @@ function JuzSection({ juzNum, surahs, student, onUpdate, isReadOnly, isAr, t, on
                                     </div>
                                     <div>
                                         <p className="font-bold text-xs text-slate-800">{t('certAchievement')} {cert.percentage}%</p>
-                                        <p className="text-[10px] text-slate-500 mt-0.5">{new Date(cert.timestamp).toLocaleDateString(isAr?'ar-EG':'en-US')}</p>
+                                        <p className="text-[10px] text-slate-500 mt-0.5">{new Date(cert.timestamp).toLocaleDateString(localeForLang(lang))}</p>
                                     </div>
-                                    {cert.certLang==='en' && <span className="absolute top-2 right-2 text-[9px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded">EN</span>}
-                                    {cert.certLang==='ar' && <span className="absolute top-2 right-2 text-[9px] bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded">AR</span>}
+                                    <span className="absolute top-2 right-2 text-[9px] bg-slate-100 text-slate-800 font-bold px-1.5 py-0.5 rounded">{certLangBadge(cl)}</span>
                                 </button>
                             );
                         })}
@@ -1446,7 +1954,7 @@ function JuzSection({ juzNum, surahs, student, onUpdate, isReadOnly, isAr, t, on
             {!isReadOnly && (
                 <div className="flex justify-end items-center">
                     <button onClick={onReset} className="flex items-center gap-2 text-red-600 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                        <i className="fas fa-sync-alt"></i> {isAr ? 'تصفير بيانات هذا الجزء' : 'Reset this Juz'}
+                        <i className="fas fa-sync-alt"></i> {t('resetThisJuz')}
                     </button>
                 </div>
             )}
@@ -1454,7 +1962,7 @@ function JuzSection({ juzNum, surahs, student, onUpdate, isReadOnly, isAr, t, on
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {surahs.map(surah => (
                     <JuzSurahCard key={surah.id} surah={surah} juzData={juzData}
-                        onUpdate={handleUpdate} isReadOnly={isReadOnly} isAr={isAr} t={t} juzNum={juzNum} onPlayAudio={onPlayAudio} />
+                        onUpdate={handleUpdate} isReadOnly={isReadOnly} lang={lang} t={t} juzNum={juzNum} onPlayAudio={onPlayAudio} />
                 ))}
             </div>
         </div>
@@ -1463,10 +1971,37 @@ function JuzSection({ juzNum, surahs, student, onUpdate, isReadOnly, isAr, t, on
 
 // ── Main App ─────────────────────────────────────────────────────────────────
 function App() {
-    const [lang, setLang] = useState(() => { try { return localStorage.getItem('quran-lang') || 'ar'; } catch(e) { return 'ar'; } });
-    const isAr = lang === 'ar';
-    const t = (key) => tDict[lang][key] || key;
-    const toggleLang = () => { const n = isAr ? 'en' : 'ar'; setLang(n); localStorage.setItem('quran-lang', n); };
+    const [lang, setLangState] = useState(() => { try { return normLang(localStorage.getItem('quran-lang')); } catch(e) { return 'ar'; } });
+    const isRtl = isRtlLang(lang);
+    const t = (key) => {
+        const pack = uiLocalePack(lang);
+        if (pack[key] !== undefined) return pack[key];
+        return tDict.en[key] ?? key;
+    };
+    
+    const hasLoadedLangRef = useRef(false);
+    const langCloudRef = useRef(lang);
+    langCloudRef.current = lang;
+
+    const setLang = (code) => {
+        const n = normLang(code);
+        setLangState(n);
+        try { localStorage.setItem('quran-lang', n); } catch(e) {}
+        if (db && syncKey && !isAdminMode) {
+            if (isReadOnly && currentId) {
+                const updated = students.map(s => s.id === currentId ? { ...s, interfaceLang: n } : s);
+                setStudents(updated);
+                setDoc(doc(db, 'quran_centers', syncKey), { students: updated }, { merge: true });
+            } else if (!isReadOnly) {
+                setDoc(doc(db, 'quran_centers', syncKey), { teacherLang: n }, { merge: true });
+            }
+        }
+    };
+
+    useEffect(() => {
+        document.documentElement.lang = lang;
+        document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
+    }, [lang, isRtl]);
 
     const [syncKey, setSyncKey] = useState(() => {
         if (localStorage.getItem('quran-parent-code')) {
@@ -1501,56 +2036,81 @@ function App() {
     const [isDataLoaded, setIsDataLoaded] = useState(false);
     const [audioPlayerSurah, setAudioPlayerSurah] = useState(null);
     const [showAssignHWModal, setShowAssignHWModal] = useState(false);
+    const [mushafSurah, setMushafSurah] = useState(null);
 
-    // Auto-login effect for both teacher and parent modes
     useEffect(() => {
         if (!db || !syncKey || isAdminMode) return;
         setIsDataLoaded(false);
         const docRef = doc(db, 'quran_centers', syncKey);
+
+        const applyFromDocData = (data) => {
+            const migrated = migrateStudentsFromFirestore(data.students);
+            if (!migrated) return false;
+            setStudents(migrated);
+            if (isReadOnly) {
+                const parentCode = localStorage.getItem('quran-parent-code');
+                if (parentCode && parentCode.includes('-')) {
+                    const [firstName, pin] = parentCode.split('-');
+                    const target = migrated.find(s => s.name.trim().split(/\s+/)[0].toLowerCase() === firstName && s.pin === pin);
+                    if (target) {
+                        setCurrentId(target.id);
+                        if (!hasLoadedLangRef.current && target.interfaceLang) {
+                            const nl = normLang(target.interfaceLang);
+                            setLang(nl);
+                            localStorage.setItem('quran-lang', nl);
+                        }
+                    }
+                }
+            } else if (data.currentId && migrated.find(s => s.id === data.currentId)) {
+                setCurrentId(data.currentId);
+                if (!hasLoadedLangRef.current && data.teacherLang) {
+                    const nl = normLang(data.teacherLang);
+                    setLang(nl);
+                    localStorage.setItem('quran-lang', nl);
+                }
+            }
+            hasLoadedLangRef.current = true;
+            return true;
+        };
+
+        const seedDocForNewTeacher = async () => {
+            const seed = { id:'1', name:'طالب 1', progress:{}, revisions:{}, certificates:[], planId:'none', juz30Data:{}, juz29Data:{}, juz30PlanId:'none', juz29PlanId:'none', listeningTasks:[] };
+            await setDoc(docRef, { students: [seed], currentId: '1', teacherLang: langCloudRef.current }, { merge: true });
+        };
+
+        const reconcileCenterWithServer = async (reason) => {
+            try {
+                const serverSnap = await getDocFromServer(docRef);
+                if (serverSnap.exists()) {
+                    const data = serverSnap.data();
+                    if (applyFromDocData(data)) return;
+                    if (!isReadOnly) {
+                        const seed = { id:'1', name:'طالب 1', progress:{}, revisions:{}, certificates:[], planId:'none', juz30Data:{}, juz29Data:{}, juz30PlanId:'none', juz29PlanId:'none', listeningTasks:[] };
+                        setStudents([seed]);
+                        setCurrentId('1');
+                        await setDoc(docRef, { students: [seed], currentId: '1', teacherLang: langCloudRef.current }, { merge: true });
+                        hasLoadedLangRef.current = true;
+                    }
+                    return;
+                }
+                if (!isReadOnly) await seedDocForNewTeacher();
+            } catch (e) {
+                console.warn('quran_centers server reconcile failed', reason, e);
+            }
+        };
+
         const unsub = onSnapshot(docRef, (docSnap) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                if (data.students && data.students.length > 0) {
-                    const migrated = data.students.map(s => {
-                        let tasks = s.listeningTasks || [];
-                        if (s.listeningTask) { tasks = [...tasks, s.listeningTask]; } // Migrate old single task format
-                        return {
-                            juz30Data:{}, juz29Data:{}, juz30PlanId:'none', juz29PlanId:'none', juz30Certificates:[], juz29Certificates:[], listeningTasks:tasks, ...s
-                        };
-                    });
-                    setStudents(migrated);
-                    if (isReadOnly) {
-                        const parentCode = localStorage.getItem('quran-parent-code');
-                        if (parentCode && parentCode.includes('-')) {
-                            const parts = parentCode.split('-');
-                            const pin = parts.pop().trim();
-                            
-                            let rawName = "";
-                            if (parts.length >= 2) {
-                                rawName = parts.pop().trim(); // Extract name part from fast-path format
-                            } else {
-                                rawName = parts[0].trim(); // Legacy format
-                            }
-
-                            const normalizeAr = (text) => text ? text.toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي') : "";
-                            const firstName = normalizeAr(rawName.split(/\s+/)[0]);
-
-                            const target = migrated.find(s => {
-                                const dbFirstName = s.name.trim().split(/\s+/)[0];
-                                return normalizeAr(dbFirstName) === firstName && s.pin === pin;
-                            });
-                            if (target) setCurrentId(target.id);
-                        }
-                    } else if (data.currentId && migrated.find(s => s.id === data.currentId)) {
-                        setCurrentId(data.currentId);
-                    }
+                if (!applyFromDocData(data)) {
+                    reconcileCenterWithServer(docSnap.metadata.fromCache ? 'cache-incomplete' : 'doc-incomplete');
                 }
-            } else if (!isReadOnly) {
-                setDoc(docRef, { students, currentId });
+            } else {
+                reconcileCenterWithServer(docSnap.metadata.fromCache ? 'cache-missing-doc' : 'missing-doc');
             }
             setIsDataLoaded(true);
         });
-        return () => unsub();
+        return () => { unsub(); hasLoadedLangRef.current = false; };
     }, [syncKey, isAdminMode, isReadOnly]);
 
     useEffect(() => {
@@ -1582,115 +2142,62 @@ function App() {
 
     const handleSetSyncKey = async (e) => {
         e.preventDefault();
-        
-        let key = tempSyncKey.trim().toLowerCase();
-        
-        // Convert any Eastern Arabic digits to standard ones just in case the parent types using an Arabic keyboard
-        key = key.replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d))
-                 .replace(/[۰-۹]/g, d => "۰۱۲۳۴۵۶۷۸۹".indexOf(d));
-                 
+        const key = tempSyncKey.trim().toLowerCase();
         if (!key) return;
         setIsSaving(true);
-        
         if (key === MASTER_ADMIN_PASSWORD) {
             setIsAdminMode(true); setTempSyncKey(""); setShowSyncModal(false); setIsSaving(false); return;
         }
-
-        // Helper to normalize Arabic text
-        const normalizeAr = (text) => {
-            if (!text) return "";
-            return text.toLowerCase()
-                .replace(/[أإآ]/g, 'ا')
-                .replace(/ة/g, 'ه')
-                .replace(/ى/g, 'ي');
-        };
 
         try {
             const adminSnap = await getDoc(doc(db,'quran_centers','_admin_settings_'));
             const codes = adminSnap.exists() ? adminSnap.data().codes || [] : [];
 
-            // 1. Is it a direct Teacher Code?
-            if (codes.includes(key)) {
-                setIsDataLoaded(false); setSyncKey(key);
-                localStorage.setItem('quran-sync-key', key); setShowSyncModal(false);
-                setIsSaving(false);
-                return;
-            }
-
-            // 2. Is it a Student Code?
             if (key.includes('-')) {
-                let foundTeacherCode = null;
-                let foundStudent = null;
-
                 const parts = key.split('-');
-                const pin = parts.pop(); 
-                
-                // FAST PATH Logic
-                if (parts.length >= 2) {
-                    const namePart = parts.pop(); // Pop off the name part
-                    const prefixPart = parts.join('-'); // The rest is the secret prefix
-                    const unscrambledPrefix = unscramble(prefixPart); // Decode it
-                    const normalizedInputName = normalizeAr(namePart);
+                const part1 = parts[0].trim();
+                const part2 = parts[1].trim();
 
-                    // Check Fast Path 1: It is a scrambled teacher code
-                    if (codes.includes(unscrambledPrefix)) {
-                        const snap = await getDoc(doc(db, 'quran_centers', unscrambledPrefix));
-                        if (snap.exists()) {
-                            foundStudent = (snap.data().students || []).find(s => {
-                                const dbFirstName = s.name.trim().split(/\s+/)[0];
-                                return normalizeAr(dbFirstName) === normalizedInputName && s.pin === pin;
-                            });
-                            if (foundStudent) foundTeacherCode = unscrambledPrefix;
-                        }
-                    } 
-                    // Check Fast Path 2: It is a raw teacher code (from yesterday's version)
-                    else if (!foundTeacherCode && codes.includes(prefixPart)) {
-                        const snap = await getDoc(doc(db, 'quran_centers', prefixPart));
-                        if (snap.exists()) {
-                            foundStudent = (snap.data().students || []).find(s => {
-                                const dbFirstName = s.name.trim().split(/\s+/)[0];
-                                return normalizeAr(dbFirstName) === normalizedInputName && s.pin === pin;
-                            });
-                            if (foundStudent) foundTeacherCode = prefixPart;
-                        }
-                    }
+                // Smart detection to handle RTL/LTR typing flips: 
+                // Checks which part is the number (PIN) and which is the Name
+                let firstName, pin;
+                if (/^\d+$/.test(part1)) {
+                    pin = part1;
+                    firstName = part2;
+                } else {
+                    firstName = part1;
+                    pin = part2;
                 }
 
-                // SLOW PATH: Extreme legacy "ahmad-1234" format
-                // We batch the requests so it doesn't crash the browser
-                if (!foundTeacherCode) {
-                    const origParts = key.split('-');
-                    origParts.pop(); // remove pin
-                    const studentNameStr = origParts.join('-'); // The rest is the name
-                    const normalizedInputName = normalizeAr(studentNameStr.split(/\s+/)[0]);
+                let foundTeacherCode = null;
 
-                    if (normalizedInputName) {
-                        const batchSize = 10; 
-                        for (let i = 0; i < codes.length; i += batchSize) {
-                            const batch = codes.slice(i, i + batchSize);
-                            const batchPromises = batch.map(code => getDoc(doc(db, 'quran_centers', code)).then(snap => ({ code, snap })).catch(() => null));
-                            const results = await Promise.all(batchPromises);
-                            
-                            for (const result of results) {
-                                if (result && result.snap.exists()) {
-                                    const studentsList = result.snap.data().students || [];
-                                    foundStudent = studentsList.find(s => {
-                                        const dbFirstName = s.name.trim().split(/\s+/)[0];
-                                        return normalizeAr(dbFirstName) === normalizedInputName && s.pin === pin;
-                                    });
-                                    if (foundStudent) {
-                                        foundTeacherCode = result.code;
-                                        break;
-                                    }
-                                }
+                // SPEED OPTIMIZATION FOR LARGE ACADEMIES: Process in fast batches of 15 
+                // and STOP immediately once the student is found to save massive time!
+                const chunkSize = 15;
+                for (let i = 0; i < codes.length; i += chunkSize) {
+                    const chunk = codes.slice(i, i + chunkSize);
+                    const snapPromises = chunk.map(code => getDoc(doc(db,'quran_centers', code)).catch(() => null));
+                    const snaps = await Promise.all(snapPromises);
+
+                    for (let j = 0; j < snaps.length; j++) {
+                        const snap = snaps[j];
+                        if (snap && snap.exists()) {
+                            const studentsList = snap.data().students || [];
+                            const foundStudent = studentsList.find(s => 
+                                s.name.trim().split(/\s+/)[0].toLowerCase() === firstName && 
+                                s.pin === pin
+                            );
+                            if (foundStudent) {
+                                foundTeacherCode = chunk[j];
+                                break;
                             }
-                            if (foundTeacherCode) break; 
                         }
                     }
+                    // If we found the student in this batch, stop searching the rest of the teachers!
+                    if (foundTeacherCode) break; 
                 }
 
-                // Final Login Resolution
-                if (foundTeacherCode && foundStudent) {
+                if (foundTeacherCode) {
                     setIsDataLoaded(false); 
                     setIsReadOnly(true); 
                     setSyncKey(foundTeacherCode);
@@ -1700,11 +2207,17 @@ function App() {
                 } else { 
                     setDialog({ isOpen:true, type:'alert', message:t('parentCodeInvalid'), onConfirm:()=>setDialog({isOpen:false}) }); 
                 }
-            } else {
+                setIsSaving(false); 
+                return;
+            }
+
+            if (codes.includes(key)) {
+                setIsDataLoaded(false); setSyncKey(key);
+                localStorage.setItem('quran-sync-key', key); setShowSyncModal(false);
+            } else { 
                 setDialog({ isOpen:true, type:'alert', message:t('codeNotRegistered'), onConfirm:()=>setDialog({isOpen:false}) }); 
             }
         } catch(err) { 
-            console.error("Login verification error:", err);
             setDialog({ isOpen:true, type:'alert', message:t('connError'), onConfirm:()=>setDialog({isOpen:false}) }); 
         }
         setIsSaving(false);
@@ -1731,6 +2244,7 @@ function App() {
         localStorage.removeItem('quran-parent-code');
         localStorage.removeItem('quran-student-sync-key');
         setStudents([defaultStudent]); setCurrentId('1');
+        hasLoadedLangRef.current = false;
     };
 
     const currentStudent = students.find(s => s.id === currentId) || students[0];
@@ -1772,8 +2286,8 @@ function App() {
 
     const resetSectionData = (section) => {
         let msg = `${t('confirmReset')} ${currentStudent.name}؟`;
-        if (section === 'juz30') msg = isAr ? `هل أنت متأكد من تصفير بيانات الجزء 30؟` : `Are you sure you want to reset Juz 30 data?`;
-        if (section === 'juz29') msg = isAr ? `هل أنت متأكد من تصفير بيانات الجزء 29؟` : `Are you sure you want to reset Juz 29 data?`;
+        if (section === 'juz30') msg = t('confirmResetJuz30');
+        if (section === 'juz29') msg = t('confirmResetJuz29');
 
         setDialog({ isOpen:true, type:'confirm', message: msg, onConfirm:() => {
             saveToCloud(students.map(s => {
@@ -1827,43 +2341,19 @@ function App() {
         }), currentId);
     };
 
+    const fallbackCopy = (text) => {
+        const ta = document.createElement("textarea"); ta.value=text; ta.style.position="fixed"; ta.style.top="0"; ta.style.left="0";
+        document.body.appendChild(ta); ta.focus(); ta.select(); try { document.execCommand('copy'); } catch(err) {} document.body.removeChild(ta);
+    };
+
     const handleShare = () => {
         const pin = currentStudent.pin || "0000";
         const firstName = currentStudent.name.trim().split(/\s+/)[0].toLowerCase();
+        const studentCode = `${firstName}-${pin}`;
         
-        // Use Scrambler to hide the teacher code from the student
-        const scrambledTeacherCode = scramble(syncKey);
-        const studentCode = `${scrambledTeacherCode}-${firstName}-${pin}`;
-        
-        let copied = false;
-        // Synchronous fallback (most reliable in embedded browser environments)
-        try {
-            const ta = document.createElement("textarea");
-            ta.value = studentCode;
-            ta.style.position = "fixed";
-            ta.style.top = "0";
-            ta.style.left = "0";
-            ta.style.opacity = "0";
-            document.body.appendChild(ta);
-            ta.focus();
-            ta.select();
-            copied = document.execCommand('copy');
-            document.body.removeChild(ta);
-        } catch(err) {
-            copied = false;
-        }
-
-        const successMsg = `${t('linkCopied')}\n\n[ ${studentCode} ]`;
-
-        // Async modern API if available and fallback failed
-        if (!copied && navigator.clipboard) {
-            navigator.clipboard.writeText(studentCode).then(
-                () => setDialog({ isOpen:true, type:'alert', message: successMsg, onConfirm:()=>setDialog({isOpen:false}) }),
-                () => setDialog({ isOpen:true, type:'alert', message: `الكود الخاص بالطالب:\n\n[ ${studentCode} ]\n\n(فشل النسخ التلقائي، يرجى تحديده ونسخه يدوياً)`, onConfirm:()=>setDialog({isOpen:false}) })
-            );
-        } else {
-             setDialog({ isOpen:true, type:'alert', message: successMsg, onConfirm:()=>setDialog({isOpen:false}) });
-        }
+        if (!navigator.clipboard) { fallbackCopy(studentCode); setDialog({ isOpen:true, type:'alert', message:t('linkCopied'), onConfirm:()=>setDialog({isOpen:false}) }); return; }
+        navigator.clipboard.writeText(studentCode).then(() => setDialog({ isOpen:true, type:'alert', message:t('linkCopied'), onConfirm:()=>setDialog({isOpen:false}) }),
+            () => { fallbackCopy(studentCode); setDialog({ isOpen:true, type:'alert', message:t('linkCopied'), onConfirm:()=>setDialog({isOpen:false}) }); });
     };
 
     // HW Functions
@@ -1908,7 +2398,8 @@ function App() {
     }, [progress]);
 
     const getBadge = (p, l=lang, small=false) => {
-        const curT = (k) => tDict[l][k]||k;
+        const pack = uiLocalePack(l);
+        const curT = (k) => (pack[k] !== undefined ? pack[k] : (tDict.en[k] ?? k));
         const iconSize = small ? "text-lg sm:text-2xl" : "text-3xl sm:text-5xl";
         if (p===100) return { icon:<i className={`fas fa-crown ${iconSize} text-yellow-500 anim-glow`}></i>, text:curT('badge100'), color:"bg-yellow-100 text-yellow-800 sticker-card" };
         if (p>=95) return { icon:<i className={`fas fa-flag-checkered ${iconSize} text-rose-500 anim-tada`}></i>, text:curT('badge95'), color:"bg-rose-100 text-rose-800 sticker-card" };
@@ -2006,14 +2497,21 @@ function App() {
         return { weakRevisions:weak, recentRevisions:recent, oldRevisions:old };
     }, [revisions]);
 
-    const displayedSurahs = searchQuery
-        ? SURAHS_DATA.filter(s=>s.name.includes(searchQuery)||s.enName.toLowerCase().includes(searchQuery.toLowerCase()))
-        : (currentJuz==='all' ? SURAHS_DATA : SURAHS_DATA.filter(s=>JUZ_SURAHS_MAP[currentJuz-1].includes(s.id)));
+    const displayedSurahs = (() => {
+        const base = currentJuz==='all' ? SURAHS_DATA : SURAHS_DATA.filter(s=>JUZ_SURAHS_MAP[currentJuz-1].includes(s.id));
+        if (!searchQuery.trim()) return base;
+        const qLow = searchQuery.trim().toLowerCase();
+        return base.filter(s =>
+            s.name.includes(searchQuery) ||
+            String(getSurahPrimary(s, lang)).toLowerCase().includes(qLow) ||
+            String(getSurahSecondary(s, lang)).toLowerCase().includes(qLow)
+        );
+    })();
 
     // ── Admin panel ──────────────────────────────────────────────────────────
     if (isAdminMode) {
         return (
-            <div className="min-h-screen bg-slate-50 p-4 sm:p-8" dir={isAr?'rtl':'ltr'}>
+            <div className="min-h-screen bg-slate-50 p-4 sm:p-8" dir={isRtl?'rtl':'ltr'}>
                 <div className="max-w-3xl mx-auto bg-white p-6 sm:p-10 rounded-3xl shadow-xl border-t-4 border-green-700 mt-10">
                     <div className="flex flex-col sm:flex-row items-center gap-4 mb-10 border-b pb-6">
                         <div className="bg-green-100 p-4 rounded-full text-green-700"><i className="fas fa-user-shield text-4xl"></i></div>
@@ -2050,9 +2548,12 @@ function App() {
                         </ul>
                     )}
                     <div className="mt-12 text-center border-t pt-6 flex flex-col items-center gap-4">
-                        <button onClick={toggleLang} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-bold flex items-center gap-2">
-                            <i className="fas fa-globe"></i> {isAr?'Switch to English':'التبديل للعربية'}
-                        </button>
+                        <div className="flex flex-col items-center gap-2">
+                            <label className="text-sm font-bold text-gray-600" htmlFor="admin-lang">{t('adminSwitchLang')}</label>
+                            <select id="admin-lang" value={lang} onChange={(e)=>setLang(e.target.value)} className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg font-bold border border-gray-400 cursor-pointer max-w-xs">
+                                {UI_LANGS.map(code => <option key={code} value={code}>{LANG_LABELS[code]}</option>)}
+                            </select>
+                        </div>
                         <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 font-medium py-2 px-4 transition-colors flex items-center gap-2">
                             <i className="fas fa-sign-out-alt"></i> {t('logoutAdmin')}
                         </button>
@@ -2062,10 +2563,10 @@ function App() {
                     </div>
                 </div>
                 {dialog.isOpen && (
-                    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/50 p-4" dir={isAr?'rtl':'ltr'}>
+                    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/50 p-4" dir={isRtl?'rtl':'ltr'}>
                         <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
                             <h3 className="text-lg font-bold text-gray-800 mb-4">{dialog.message}</h3>
-                            <div className={`flex gap-3 mt-2 ${isAr?'justify-end':'justify-start'}`}>
+                            <div className={`flex gap-3 mt-2 ${isRtl?'justify-end':'justify-start'}`}>
                                 {dialog.type!=='alert' && <button onClick={()=>setDialog({...dialog,isOpen:false})} className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl font-medium">{t('cancel')}</button>}
                                 <button onClick={()=>dialog.onConfirm()} className="px-4 py-2 text-white bg-green-900 hover:bg-green-800 rounded-xl font-medium">{t('confirm')}</button>
                             </div>
@@ -2078,11 +2579,11 @@ function App() {
 
     // ── Main App ─────────────────────────────────────────────────────────────
     return (
-        <div className="min-h-screen bg-slate-50 pb-20 pt-24 sm:pt-2" dir={isAr?'rtl':'ltr'}>
+        <div className="min-h-screen bg-slate-50 pb-20 pt-24 sm:pt-2" dir={isRtl?'rtl':'ltr'}>
 
             {/* ── Assign HW Modal ── */}
             {showAssignHWModal && (
-                <AssignHWModal onClose={() => setShowAssignHWModal(false)} onSave={handleAssignHW} t={t} isAr={isAr} />
+                <AssignHWModal onClose={() => setShowAssignHWModal(false)} onSave={handleAssignHW} t={t} lang={lang} />
             )}
 
             {/* ── Audio Player Modal ── */}
@@ -2090,10 +2591,15 @@ function App() {
                 <AudioPlayerModal 
                     surah={audioPlayerSurah.surah} 
                     hwTask={audioPlayerSurah.hwTask}
-                    onHWComplete={() => handleHWComplete(audioPlayerSurah.hwTask.id)}
+                    onHWComplete={audioPlayerSurah.hwTask ? () => handleHWComplete(audioPlayerSurah.hwTask.id) : () => {}}
                     onClose={() => setAudioPlayerSurah(null)} 
-                    t={t} isAr={isAr} 
+                    t={t} lang={lang} 
                 />
+            )}
+
+            {/* ── Mushaf Viewer Modal ── */}
+            {mushafSurah && (
+                <MushafViewerModal surah={mushafSurah} onClose={() => setMushafSurah(null)} t={t} lang={lang} />
             )}
 
             {/* ── Unified Certificate Viewer ── */}
@@ -2106,7 +2612,7 @@ function App() {
                     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-2 sm:p-4 backdrop-blur-sm" dir="ltr">
                         <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl h-[95vh] sm:h-[85vh] flex flex-col overflow-hidden">
                             <div className="bg-slate-50 border-b border-slate-200 p-3 sm:p-4 flex justify-between items-center shrink-0">
-                                <span className="font-bold text-sm text-slate-800 flex items-center gap-2"><i className="fas fa-certificate text-yellow-500 text-lg"></i> {cert.certLang==='ar'?'شهادة تميز':'Award of Excellence'}</span>
+                                <span className="font-bold text-sm text-slate-800 flex items-center gap-2"><i className="fas fa-certificate text-yellow-500 text-lg"></i> {uiLocalePack(cert.certLang).certViewerAward || t('certViewerAward')}</span>
                                 <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"><i className="fas fa-times"></i></button>
                             </div>
                             <div className="flex-1 bg-slate-200/80 flex items-center justify-center relative shadow-inner overflow-hidden custom-scrollbar">
@@ -2126,7 +2632,7 @@ function App() {
             {/* ── Certificate Wizard ── */}
             {showCertWizard && (
                 <CertWizard
-                    isAr={isAr} t={t} lang={lang}
+                    t={t} lang={lang}
                     pct={showCertWizard.pct}
                     juzNum={showCertWizard.juzNum}
                     studentName={currentStudent?.name}
@@ -2136,20 +2642,23 @@ function App() {
                         const key = showCertWizard.certKey;
                         saveToCloud(students.map(s => s.id===currentId ? {...s, [key]:[...(s[key]||[]),nC]} : s), currentId);
                         setShowCertWizard(null);
-                        setTimeout(() => setDialog({ isOpen:true, type:'alert', message: isAr ? '🎉 تم حفظ الشهادة بنجاح!' : '🎉 Certificate saved!', onConfirm:()=>setDialog({isOpen:false})}), 300);
+                        setTimeout(() => setDialog({ isOpen:true, type:'alert', message: t('certSavedToast'), onConfirm:()=>setDialog({isOpen:false})}), 300);
                     }}
                 />
             )}
 
             {/* Login modal */}
             {showSyncModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-green-900/90 p-4" dir={isAr?'rtl':'ltr'}>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-green-900/90 p-4" dir={isRtl?'rtl':'ltr'}>
                     <form onSubmit={handleSetSyncKey} className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 text-center border-4 border-yellow-400 relative">
-                        <button type="button" onClick={toggleLang} className={`absolute top-4 ${isAr?'left-4':'right-4'} bg-green-100 hover:bg-green-200 text-green-800 px-3 py-1 rounded-lg text-sm font-bold flex items-center gap-1`}>
-                            <i className="fas fa-globe"></i> {isAr?'EN':'عربي'}
-                        </button>
-                        <div className="w-24 h-24 mx-auto rounded-full border-4 border-yellow-400 bg-white shadow-md mb-4 mt-4 flex items-center justify-center text-green-800 text-4xl">
-                            <i className="fas fa-book-open"></i>
+                        <div className={`absolute top-4 ${isRtl?'left-4':'right-4'} flex items-center gap-2`}>
+                            <label className="sr-only" htmlFor="login-lang">{t('chooseLanguage')}</label>
+                            <select id="login-lang" value={lang} onChange={(e)=>setLang(e.target.value)} className="bg-green-100 hover:bg-green-200 text-green-800 px-2 py-1.5 rounded-lg text-xs sm:text-sm font-bold max-w-[148px] border border-green-300 cursor-pointer">
+                                {UI_LANGS.map(code => <option key={code} value={code}>{LANG_LABELS[code]}</option>)}
+                            </select>
+                        </div>
+                        <div className="w-24 h-24 mx-auto rounded-full border-4 border-yellow-400 bg-white shadow-md mb-4 mt-4 flex items-center justify-center" aria-hidden="true">
+                            <i className="fas fa-book text-5xl text-green-900"></i>
                         </div>
                         <h2 className="text-2xl font-bold text-green-900 mb-2">{t('welcomeCloud')}</h2>
                         <p className="text-gray-600 mb-6 text-sm">{t('enterCode')}</p>
@@ -2167,21 +2676,21 @@ function App() {
                         <div className="max-w-5xl mx-auto px-3 py-3 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
                             <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
                                 <div className="flex items-center gap-2 sm:gap-3">
-                                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-yellow-400 bg-white shadow-sm flex items-center justify-center text-green-800 text-xl sm:text-2xl">
-                                        <i className="fas fa-book-open"></i>
+                                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-yellow-400 bg-white shadow-sm flex items-center justify-center shrink-0" aria-hidden="true">
+                                        <i className="fas fa-book text-green-900 text-lg sm:text-2xl"></i>
                                     </div>
                                     <div>
                                         <h1 className="text-lg sm:text-2xl font-bold text-white leading-tight">{isReadOnly ? t('parentPortal') : t('title')}</h1>
                                         <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                            <button onClick={toggleLang} className="bg-white/20 hover:bg-white/30 text-white px-2 py-0.5 rounded text-[10px] sm:text-xs flex items-center gap-1">
-                                                <i className="fas fa-globe"></i> {isAr?'English':'عربي'}
-                                            </button>
+                                            <select value={lang} onChange={(e)=>setLang(e.target.value)} className="bg-white/20 hover:bg-white/30 text-white px-1 py-0.5 rounded text-[10px] sm:text-xs font-bold max-w-[120px] sm:max-w-[160px] border border-white/30 cursor-pointer" title={t('chooseLanguage')} aria-label={t('chooseLanguage')}>
+                                                {UI_LANGS.map(code => <option key={code} value={code} className="bg-green-900 text-white">{LANG_LABELS[code]}</option>)}
+                                            </select>
                                             {!isReadOnly && (
                                                 <>
                                                     <span className={`w-2 h-2 rounded-full ${isSaving?'bg-orange-400 animate-pulse':'bg-green-400 shadow-[0_0_8px_#4ade80]'}`}></span>
-                                                    <span className="text-[10px] sm:text-xs text-green-200">{isSaving ? t('saving') : `${t('connected')} ${syncKey||t('notSet')})`}</span>
+                                                    <span className="text-[10px] sm:text-xs text-green-200">{isSaving ? t('saving') : t('connected')}</span>
                                                     {syncKey && (
-                                                        <button onClick={handleLogout} className={`text-[10px] bg-red-500/20 hover:bg-red-500/40 text-red-100 px-2 py-0.5 rounded border border-red-500/30 flex items-center gap-1 ${isAr?'mr-1':'ml-1'}`}>
+                                                        <button onClick={handleLogout} className={`text-[10px] bg-red-500/20 hover:bg-red-500/40 text-red-100 px-2 py-0.5 rounded border border-red-500/30 flex items-center gap-1 ${isRtl?'mr-1':'ml-1'}`}>
                                                             <i className="fas fa-sign-out-alt"></i> {t('logout')}
                                                         </button>
                                                     )}
@@ -2202,11 +2711,11 @@ function App() {
                                 ) : (
                                     <>
                                         <div className="relative flex-1">
-                                            <select value={currentStudent?.id||''} onChange={(e)=>saveToCloud(students,e.target.value)} className={`w-full py-2 sm:py-2.5 rounded-xl bg-green-800/50 border border-green-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm sm:text-lg font-medium appearance-none cursor-pointer ${isAr?'pl-4 pr-8 sm:pr-10':'pr-4 pl-8 sm:pl-10'}`}>
+                                            <select value={currentStudent?.id||''} onChange={(e)=>saveToCloud(students,e.target.value)} className={`w-full py-2 sm:py-2.5 rounded-xl bg-green-800/50 border border-green-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm sm:text-lg font-medium appearance-none cursor-pointer ${isRtl?'pl-4 pr-8 sm:pr-10':'pr-4 pl-8 sm:pl-10'}`}>
                                                 {students.map(s=><option key={s.id} value={s.id} className="bg-green-800">{s.name}</option>)}
                                             </select>
-                                            <i className={`fas fa-users absolute top-1/2 -translate-y-1/2 text-sm sm:text-lg text-yellow-400 pointer-events-none ${isAr?'right-2 sm:right-3':'left-2 sm:left-3'}`}></i>
-                                            <i className={`fas fa-chevron-down absolute top-1/2 -translate-y-1/2 text-sm sm:text-lg text-yellow-400 pointer-events-none ${isAr?'left-2 sm:left-3':'right-2 sm:right-3'}`}></i>
+                                            <i className={`fas fa-users absolute top-1/2 -translate-y-1/2 text-sm sm:text-lg text-yellow-400 pointer-events-none ${isRtl?'right-2 sm:right-3':'left-2 sm:left-3'}`}></i>
+                                            <i className={`fas fa-chevron-down absolute top-1/2 -translate-y-1/2 text-sm sm:text-lg text-yellow-400 pointer-events-none ${isRtl?'left-2 sm:left-3':'right-2 sm:right-3'}`}></i>
                                         </div>
                                         <button onClick={handleShare} className="p-2 sm:p-2.5 bg-blue-600 hover:bg-blue-500 border border-blue-500 rounded-xl" title={t('shareLink')}><i className="fas fa-share-alt text-base sm:text-lg text-white"></i></button>
                                         <button onClick={renameStudent} className="p-2 sm:p-2.5 bg-green-800 hover:bg-green-700 border border-green-700 rounded-xl" title={t('editStudent')}><i className="fas fa-edit text-base sm:text-lg text-yellow-400"></i></button>
@@ -2217,14 +2726,6 @@ function App() {
                             </div>
                         </div>
                     </header>
-
-                    {/* Safety Banner for Teachers in Parent Mode */}
-                    {isReadOnly && (
-                        <div className="bg-blue-600 text-blue-50 px-4 py-2.5 text-center text-xs sm:text-sm font-bold shadow-inner flex items-center justify-center gap-2">
-                            <i className="fas fa-info-circle text-blue-300 text-lg"></i>
-                            <span>{t('readOnlyWarning')}</span>
-                        </div>
-                    )}
 
                     {/* Student HW Notification Banner (Only for ReadOnly/Student Portal) */}
                     {isReadOnly && currentStudent.listeningTasks && currentStudent.listeningTasks.filter(t => !t.completed).length > 0 && (
@@ -2240,11 +2741,12 @@ function App() {
                                                 {t('newHWAlert')}
                                             </h3>
                                             <p className="text-sm mt-1 font-medium text-purple-600">
-                                                {t('surah')} {SURAHS_DATA.find(s=>s.id===task.surahId)?.[isAr?'name':'enName']} 
+                                                {t('surah')} {(sh => sh ? getSurahPrimary(sh, lang) : '')(SURAHS_DATA.find(s=>s.id===task.surahId))} 
                                                 <span className="mx-1">•</span> 
                                                 {t('ayahs')} {task.fromAyah} - {task.toAyah} 
                                                 <span className="mx-1">•</span> 
                                                 {task.requiredRepeats} {t('times')}
+                                                {task.reciter && <><span className="mx-1">•</span><i className="fas fa-microphone-alt mx-1"></i>{(RECITERS.find(r=>r.value===task.reciter)||{label:task.reciter}).label}</>}
                                             </p>
                                         </div>
                                     </div>
@@ -2269,11 +2771,6 @@ function App() {
                         const juz30Pct = parseFloat(((juz30Memorized / JUZ30_TOTAL_AYAHS)*100).toFixed(1));
                         const juz29Pct = parseFloat(((juz29Memorized / JUZ29_TOTAL_AYAHS)*100).toFixed(1));
 
-                        const juz30Plan = JUZ_WEEKLY_PLANS.find(p => p.id===(currentStudent.juz30PlanId||'none')) || JUZ_WEEKLY_PLANS[0];
-                        const juz29Plan = JUZ_WEEKLY_PLANS.find(p => p.id===(currentStudent.juz29PlanId||'none')) || JUZ_WEEKLY_PLANS[0];
-                        const juz30Eta = juz30Plan.ayahsPerWeek > 0 ? formatJuzETA(JUZ30_TOTAL_AYAHS - juz30Memorized, juz30Plan.ayahsPerWeek, isAr) : null;
-                        const juz29Eta = juz29Plan.ayahsPerWeek > 0 ? formatJuzETA(JUZ29_TOTAL_AYAHS - juz29Memorized, juz29Plan.ayahsPerWeek, isAr) : null;
-
                         if (activeTab === 'juz30') {
                             const currentBadgeJuz30 = getBadge(juz30Pct, lang, true);
                             
@@ -2290,7 +2787,7 @@ function App() {
                                             </div>
                                             <div>
                                                 <h2 className="text-[10px] sm:text-sm text-emerald-200 font-medium flex items-center gap-1">
-                                                    <span className="text-base">📖</span> {isAr ? 'الجزء الثلاثون — عمّ' : 'Juz 30 — Amma'}
+                                                    <span className="text-base">📖</span> {t('juz30BannerTitle')}
                                                 </h2>
                                                 <div className="text-base sm:text-2xl font-bold text-white">
                                                     {juz30Memorized} <span className="text-[10px] sm:text-sm text-emerald-200/70 font-normal">/ {JUZ30_TOTAL_AYAHS}</span>
@@ -2301,7 +2798,7 @@ function App() {
                                         
                                         <div className="flex flex-col items-end gap-1.5">
                                             <div className="flex items-center gap-2 flex-wrap justify-end">
-                                                {!isReadOnly && <JuzPlanSelector juzNum={30} planId={currentStudent.juz30PlanId||'none'} onSetPlan={(id)=>handleJuzUpdate('juz30PlanId',id)} isReadOnly={isReadOnly} isAr={isAr} t={t} />}
+                                                {!isReadOnly && <JuzPlanSelector juzNum={30} planId={currentStudent.juz30PlanId||'none'} onSetPlan={(id)=>handleJuzUpdate('juz30PlanId',id)} isReadOnly={isReadOnly} lang={lang} t={t} />}
                                                 {!isReadOnly && (
                                                     <button onClick={() => setShowAssignHWModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[10px] sm:text-xs font-bold shadow-sm transition-colors">
                                                         <i className="fas fa-headphones-alt"></i> <span className="hidden sm:inline">{t('assignHW')}</span>
@@ -2348,7 +2845,7 @@ function App() {
                                             </div>
                                             <div>
                                                 <h2 className="text-[10px] sm:text-sm text-amber-200 font-medium flex items-center gap-1">
-                                                    <span className="text-base">📖</span> {isAr ? 'الجزء التاسع والعشرون — تبارك' : 'Juz 29 — Tabarak'}
+                                                    <span className="text-base">📖</span> {t('juz29BannerTitle')}
                                                 </h2>
                                                 <div className="text-base sm:text-2xl font-bold text-white">
                                                     {juz29Memorized} <span className="text-[10px] sm:text-sm text-amber-200/70 font-normal">/ {JUZ29_TOTAL_AYAHS}</span>
@@ -2359,7 +2856,7 @@ function App() {
                                         
                                         <div className="flex flex-col items-end gap-1.5">
                                             <div className="flex items-center gap-2 flex-wrap justify-end">
-                                                {!isReadOnly && <JuzPlanSelector juzNum={29} planId={currentStudent.juz29PlanId||'none'} onSetPlan={(id)=>handleJuzUpdate('juz29PlanId',id)} isReadOnly={isReadOnly} isAr={isAr} t={t} />}
+                                                {!isReadOnly && <JuzPlanSelector juzNum={29} planId={currentStudent.juz29PlanId||'none'} onSetPlan={(id)=>handleJuzUpdate('juz29PlanId',id)} isReadOnly={isReadOnly} lang={lang} t={t} />}
                                                 {!isReadOnly && (
                                                     <button onClick={() => setShowAssignHWModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[10px] sm:text-xs font-bold shadow-sm transition-colors">
                                                         <i className="fas fa-headphones-alt"></i> <span className="hidden sm:inline">{t('assignHW')}</span>
@@ -2417,7 +2914,7 @@ function App() {
                                                     planId={currentStudent.planId} 
                                                     onSetPlan={(id) => saveToCloud(students.map(s => s.id === currentId ? { ...s, planId: id } : s), currentId)} 
                                                     isReadOnly={isReadOnly} 
-                                                    isAr={isAr} 
+                                                    lang={lang} 
                                                     t={t} 
                                                 />
                                             )}
@@ -2457,7 +2954,7 @@ function App() {
                                 <button onClick={()=>setActiveTab('main')}
                                     className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 whitespace-nowrap ${activeTab==='main' ? 'bg-gradient-to-br from-green-600 to-emerald-500 text-white shadow-lg shadow-green-500/30' : 'text-slate-500 hover:text-slate-800 hover:bg-white hover:shadow-sm'}`}>
                                     <i className={`fas fa-book-open ${activeTab==='main' ? 'text-green-100' : 'text-slate-400'}`}></i>
-                                    <span>{isAr ? 'القرآن الكريم' : 'Full Quran'}</span>
+                                    <span>{t('tabFullQuran')}</span>
                                 </button>
                                 <button onClick={()=>setActiveTab('juz30')}
                                     className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 whitespace-nowrap ${activeTab==='juz30' ? 'bg-gradient-to-br from-green-600 to-emerald-500 text-white shadow-lg shadow-green-500/30' : 'text-slate-500 hover:text-slate-800 hover:bg-white hover:shadow-sm'}`}>
@@ -2486,13 +2983,13 @@ function App() {
                                 <div>
                                     {currentPlan.id !== 'none' ? (
                                         <>
-                                            <h3 className="font-bold text-teal-900 text-sm sm:text-base">{t('planTitle')} {isAr ? currentPlan.arTitle : currentPlan.enTitle}</h3>
-                                            <p className="text-xs sm:text-sm text-teal-700 mt-1"><strong>{t('planTarget')}</strong> {isAr ? currentPlan.arTarget : currentPlan.enTarget}</p>
+                                            <h3 className="font-bold text-teal-900 text-sm sm:text-base">{t('planTitle')} {planMemTitle(currentPlan, lang)}</h3>
+                                            <p className="text-xs sm:text-sm text-teal-700 mt-1"><strong>{t('planTarget')}</strong> {planMemTarget(currentPlan, lang)}</p>
                                         </>
                                     ) : (
                                         <>
-                                            <h3 className="font-bold text-teal-900 text-sm sm:text-base">{isAr ? 'لم يتم تحديد خطة الحفظ' : 'No Memorization Plan Set'}</h3>
-                                            <p className="text-xs sm:text-sm text-teal-700 mt-1 opacity-80">{isAr ? 'اختر خطة الحفظ من الشريط بالأعلى.' : 'Select your memorization plan from the bar above.'}</p>
+                                            <h3 className="font-bold text-teal-900 text-sm sm:text-base">{t('noMemPlanTitle')}</h3>
+                                            <p className="text-xs sm:text-sm text-teal-700 mt-1 opacity-80">{t('noMemPlanHint')}</p>
                                         </>
                                     )}
                                 </div>
@@ -2500,8 +2997,8 @@ function App() {
                             {currentPlan.id !== 'none' && (
                                 <div className="bg-white border border-teal-100 rounded-xl p-3 px-6 text-center shadow-sm shrink-0 w-full sm:w-auto">
                                     <p className="text-[10px] sm:text-xs text-gray-500 mb-1">{t('planETA')}</p>
-                                    <p className="font-black text-teal-600 text-sm sm:text-lg" dir={isAr?"rtl":"ltr"}>
-                                        {formatRemainingTime(currentPlan.days, stats.remaining, isAr)}
+                                    <p className="font-black text-teal-600 text-sm sm:text-lg" dir={isRtl?"rtl":"ltr"}>
+                                        {formatRemainingTime(currentPlan.days, stats.remaining, lang, t)}
                                     </p>
                                 </div>
                             )}
@@ -2511,7 +3008,7 @@ function App() {
                     {/* JUZ 30 TAB */}
                     {activeTab === 'juz30' && (
                         <JuzSection juzNum={30} surahs={JUZ30_SURAHS} student={currentStudent}
-                            onUpdate={handleJuzUpdate} isReadOnly={isReadOnly} isAr={isAr} t={t}
+                            onUpdate={handleJuzUpdate} isReadOnly={isReadOnly} t={t}
                             onIssueCert={issueJuzCertificate}
                             onViewCert={(cert, juzNum) => setSelectedJuzCert({ cert, juzNum })}
                             getBadge={getBadge} lang={lang} onReset={() => resetSectionData('juz30')} onPlayAudio={(obj) => setAudioPlayerSurah(obj)} onClearHW={handleClearHW} />
@@ -2520,7 +3017,7 @@ function App() {
                     {/* JUZ 29 TAB */}
                     {activeTab === 'juz29' && (
                         <JuzSection juzNum={29} surahs={JUZ29_SURAHS} student={currentStudent}
-                            onUpdate={handleJuzUpdate} isReadOnly={isReadOnly} isAr={isAr} t={t}
+                            onUpdate={handleJuzUpdate} isReadOnly={isReadOnly} t={t}
                             onIssueCert={issueJuzCertificate}
                             onViewCert={(cert, juzNum) => setSelectedJuzCert({ cert, juzNum })}
                             getBadge={getBadge} lang={lang} onReset={() => resetSectionData('juz29')} onPlayAudio={(obj) => setAudioPlayerSurah(obj)} onClearHW={handleClearHW} />
@@ -2532,7 +3029,7 @@ function App() {
                             {!isReadOnly && currentStudent.listeningTasks && currentStudent.listeningTasks.length > 0 && (
                                 <div className="space-y-3 mb-6">
                                     {currentStudent.listeningTasks.map(task => (
-                                        <TeacherHWAlert key={task.id} task={task} onClear={() => handleClearHW(task.id)} isAr={isAr} t={t} />
+                                        <TeacherHWAlert key={task.id} task={task} onClear={() => handleClearHW(task.id)} lang={lang} t={t} />
                                     ))}
                                 </div>
                             )}
@@ -2547,7 +3044,7 @@ function App() {
                                             {inProgressSurahs.length > 0 ? inProgressSurahs.map(s => (
                                                 <button key={s.id} onClick={()=>scrollToSurah(s.id)} className="w-full text-start bg-white p-3 rounded-xl shadow-sm border border-blue-50 hover:border-blue-300 transition-all group">
                                                     <div className="flex justify-between mb-2 text-xs items-center">
-                                                        <span className="font-bold text-slate-700 group-hover:text-blue-700">{t('surah')} {isAr?s.name:s.enName}</span>
+                                                        <span className="font-bold text-slate-700 group-hover:text-blue-700">{t('surah')} {getSurahPrimary(s, lang)}</span>
                                                         <span className="text-blue-600 font-bold" dir="ltr">{progress[s.id]} / {s.totalAyahs}</span>
                                                     </div>
                                                     <div className="w-full bg-blue-100 rounded-full h-1.5">
@@ -2562,7 +3059,7 @@ function App() {
                                         <div className="flex flex-wrap gap-2 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar content-start">
                                             {completedSurahsList.length > 0 ? completedSurahsList.map(s => (
                                                 <button key={s.id} onClick={()=>scrollToSurah(s.id)} className="bg-white text-green-700 px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold border border-green-200 shadow-sm hover:bg-green-600 hover:text-white transition-colors">
-                                                    {isAr?s.name:s.enName}
+                                                    {getSurahPrimary(s, lang)}
                                                 </button>
                                             )) : <p className="text-xs text-slate-500 my-auto w-full text-center">{t('noData')}</p>}
                                         </div>
@@ -2573,7 +3070,7 @@ function App() {
                                             <div className="flex flex-wrap gap-2 overflow-y-auto custom-scrollbar max-h-[80px] content-start">
                                                 {weakRevisions.length > 0 ? weakRevisions.map(s => (
                                                     <button key={s.id} onClick={()=>scrollToSurah(s.id)} className="bg-white text-red-600 px-3 py-1.5 rounded-lg text-[10px] font-bold border border-red-200 shadow-sm hover:bg-red-50">
-                                                        {isAr?s.name:s.enName}
+                                                        {getSurahPrimary(s, lang)}
                                                     </button>
                                                 )) : <span className="text-xs text-slate-400 my-auto">—</span>}
                                             </div>
@@ -2583,7 +3080,7 @@ function App() {
                                             <div className="flex flex-wrap gap-2 overflow-y-auto custom-scrollbar max-h-[80px] content-start">
                                                 {oldRevisions.length > 0 ? oldRevisions.map(s => (
                                                     <button key={s.id} onClick={()=>scrollToSurah(s.id)} className="bg-white text-orange-600 px-3 py-1.5 rounded-lg text-[10px] font-bold border border-orange-200 shadow-sm hover:bg-orange-50">
-                                                        {isAr?s.name:s.enName}
+                                                        {getSurahPrimary(s, lang)}
                                                     </button>
                                                 )) : <span className="text-xs text-slate-400 my-auto">—</span>}
                                             </div>
@@ -2593,7 +3090,7 @@ function App() {
                                             <div className="flex flex-wrap gap-2 overflow-y-auto custom-scrollbar max-h-[80px] content-start">
                                                 {recentRevisions.length > 0 ? recentRevisions.map(s => (
                                                     <button key={s.id} onClick={()=>scrollToSurah(s.id)} className="bg-white text-green-600 px-3 py-1.5 rounded-lg text-[10px] font-bold border border-green-200 shadow-sm hover:bg-green-50">
-                                                        {isAr?s.name:s.enName}
+                                                        {getSurahPrimary(s, lang)}
                                                     </button>
                                                 )) : <span className="text-xs text-slate-400 my-auto">—</span>}
                                             </div>
@@ -2614,11 +3111,10 @@ function App() {
                                                 </div>
                                                 <div>
                                                     <p className="font-bold text-sm text-green-900">{t('certAchievement')} {cert.percentage}%</p>
-                                                    <p className="text-xs text-slate-500 mt-1">{new Date(cert.timestamp).toLocaleDateString(isAr?'ar-EG':'en-US')}</p>
+                                                    <p className="text-xs text-slate-500 mt-1">{new Date(cert.timestamp).toLocaleDateString(localeForLang(lang))}</p>
                                                     {cert.reason && <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[140px]">{cert.reason}</p>}
                                                 </div>
-                                                {cert.certLang==='en' && <span className="absolute top-3 right-3 text-[9px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded">EN</span>}
-                                                {cert.certLang==='ar' && <span className="absolute top-3 right-3 text-[9px] bg-green-100 text-green-800 font-bold px-2 py-0.5 rounded">AR</span>}
+                                                <span className="absolute top-3 right-3 text-[9px] bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded">{certLangBadge(normLang(cert.certLang||'ar'))}</span>
                                             </button>
                                         ))}
                                     </div>
@@ -2627,8 +3123,8 @@ function App() {
 
                             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                                 <div className="relative w-full sm:max-w-md">
-                                    <i className={`fas fa-search absolute top-1/2 -translate-y-1/2 ${isAr?'right-4':'left-4'} text-slate-400`}></i>
-                                    <input type="text" placeholder={t('searchSurah')} value={searchQuery} onChange={(e)=>setSearchQuery(e.target.value)} className={`w-full py-3 ${isAr?'pr-12 pl-4':'pl-12 pr-4'} rounded-xl border border-slate-200 focus:ring-2 focus:ring-green-800 focus:border-transparent outline-none shadow-sm`} />
+                                    <i className={`fas fa-search absolute top-1/2 -translate-y-1/2 ${isRtl?'right-4':'left-4'} text-slate-400`}></i>
+                                    <input type="text" placeholder={t('searchSurah')} value={searchQuery} onChange={(e)=>setSearchQuery(e.target.value)} className={`w-full py-3 ${isRtl?'pr-12 pl-4':'pl-12 pr-4'} rounded-xl border border-slate-200 focus:ring-2 focus:ring-green-800 focus:border-transparent outline-none shadow-sm`} />
                                 </div>
                                 <button onClick={() => resetSectionData('main')} className="flex items-center gap-2 text-red-600 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors"><i className="fas fa-sync-alt"></i> {t('resetData')}</button>
                             </div>
@@ -2643,13 +3139,13 @@ function App() {
                                         <div id={`surah-card-${surah.id}`} key={surah.id}
                                             className={`relative overflow-visible rounded-2xl border p-5 transition-all duration-200 hover:shadow-md ${isComplete ? 'bg-green-50 border-yellow-200 ring-1 ring-yellow-300' : 'bg-white border-slate-200'} ${isHighlighted ? 'ring-4 ring-blue-400 shadow-xl' : ''}`}>
                                             <div className="absolute bottom-0 left-0 right-0 h-1 rounded-b-2xl overflow-hidden pointer-events-none">
-                                                <div className={`absolute bottom-0 h-full bg-yellow-500 transition-all duration-500 ${isAr?'right-0':'left-0'}`} style={{width:`${progressPercent}%`}} />
+                                                <div className={`absolute bottom-0 h-full bg-yellow-500 transition-all duration-500 ${isRtl?'right-0':'left-0'}`} style={{width:`${progressPercent}%`}} />
                                             </div>
                                             <div className="flex justify-between items-start mb-4">
                                                 <div>
                                                     <div className="flex items-center gap-2">
                                                         <span className="flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-500 text-xs font-bold shadow-inner">{surah.id}</span>
-                                                        <h3 className="text-lg font-bold text-slate-800">{t('surah')} {isAr?surah.name:surah.enName} <br/><span className="text-sm font-normal text-slate-400 mt-0.5">{isAr?surah.enName:surah.enMeaning}</span></h3>
+                                                        <h3 className="text-lg font-bold text-slate-800">{t('surah')} {getSurahPrimary(surah, lang)} <br/><span className="text-sm font-normal text-slate-400 mt-0.5">{getSurahSecondary(surah, lang)}</span></h3>
                                                         <button onClick={() => setAudioPlayerSurah({ surah, hwTask: null })} className="text-green-500 hover:text-green-700 bg-green-50 hover:bg-green-100 w-6 h-6 rounded-full flex items-center justify-center transition-colors" title={t('listenSurah')}>
                                                             <i className="fas fa-headphones-alt text-xs"></i>
                                                         </button>
@@ -2663,7 +3159,7 @@ function App() {
                                             {!isReadOnly && (
                                                 <div className="flex items-center gap-3">
                                                     <div className="flex-1">
-                                                        <input type="range" min="0" max={surah.totalAyahs} value={memorizedCount} onChange={(e)=>updateSurah(surah.id,parseInt(e.target.value)||0)} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-green-800" dir={isAr ? "rtl" : "ltr"} />
+                                                        <input type="range" min="0" max={surah.totalAyahs} value={memorizedCount} onChange={(e)=>updateSurah(surah.id,parseInt(e.target.value)||0)} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-green-800" dir={isRtl ? "rtl" : "ltr"} />
                                                     </div>
                                                     <div className="w-16 shrink-0">
                                                         <input type="number" min="0" max={surah.totalAyahs} value={memorizedCount===0?'':memorizedCount} onChange={(e)=>updateSurah(surah.id,parseInt(e.target.value)||0)} placeholder="0" className="w-full px-2 py-1.5 text-center text-sm font-semibold rounded border border-slate-200 focus:outline-none focus:border-green-800 focus:ring-1 focus:ring-green-800 bg-slate-50" />
@@ -2683,7 +3179,7 @@ function App() {
                                                     <span className="text-xs text-slate-500 font-medium">{t('revision')}</span>
                                                     {!isReadOnly && Object.keys(revisions[surah.id]||{}).length > 0 && (
                                                         <button onClick={()=>clearRevisions(surah.id)} className="text-slate-400 hover:text-red-600 flex items-center gap-1.5 text-[11px] bg-slate-50 hover:bg-red-50 px-3 py-1 rounded-full">
-                                                            <i className="fas fa-sync-alt"></i> <span className="font-bold">{isAr?'إعادة':'Reset'}</span>
+                                                            <i className="fas fa-sync-alt"></i> <span className="font-bold">{t('revisionResetBtn')}</span>
                                                         </button>
                                                     )}
                                                 </div>
@@ -2726,15 +3222,15 @@ function App() {
                             {!searchQuery && (
                                 <div className="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8 mt-12 pt-8 border-t border-slate-200">
                                     <div className="flex items-center gap-3">
-                                        <button onClick={()=>{if(currentJuz!=='all'){setCurrentJuz(prev=>Math.max(prev-1,1));window.scrollTo({top:300,behavior:'smooth'});}}} disabled={currentJuz==='all'||currentJuz===1} className="p-3 rounded-xl border border-slate-200 text-slate-500 disabled:opacity-50 hover:bg-green-50 hover:text-green-800 bg-white w-12 h-12 shadow-sm transition-colors"><i className={`fas ${isAr?'fa-chevron-right':'fa-chevron-left'} text-lg`}></i></button>
+                                        <button onClick={()=>{if(currentJuz!=='all'){setCurrentJuz(prev=>Math.max(prev-1,1));window.scrollTo({top:300,behavior:'smooth'});}}} disabled={currentJuz==='all'||currentJuz===1} className="p-3 rounded-xl border border-slate-200 text-slate-500 disabled:opacity-50 hover:bg-green-50 hover:text-green-800 bg-white w-12 h-12 shadow-sm transition-colors"><i className={`fas ${isRtl?'fa-chevron-right':'fa-chevron-left'} text-lg`}></i></button>
                                         <div className="relative">
-                                            <select value={currentJuz} onChange={(e)=>{const val=e.target.value;setCurrentJuz(val==='all'?'all':Number(val));window.scrollTo({top:300,behavior:'smooth'});}} className={`appearance-none py-3 rounded-xl border-2 border-green-500 bg-white text-green-900 font-bold focus:outline-none cursor-pointer text-center min-w-[160px] text-lg shadow-sm ${isAr?'pl-10 pr-4':'pr-10 pl-4'}`}>
+                                            <select value={currentJuz} onChange={(e)=>{const val=e.target.value;setCurrentJuz(val==='all'?'all':Number(val));window.scrollTo({top:300,behavior:'smooth'});}} className={`appearance-none py-3 rounded-xl border-2 border-green-500 bg-white text-green-900 font-bold focus:outline-none cursor-pointer text-center min-w-[160px] text-lg shadow-sm ${isRtl?'pl-10 pr-4':'pr-10 pl-4'}`}>
                                                 <option value="all" className="font-bold">{t('showAll')}</option>
                                                 {[...Array(30)].map((_,i)=><option key={i+1} value={i+1} className="font-bold">{t('juz')} {i+1}</option>)}
                                             </select>
-                                            <i className={`fas fa-chevron-down absolute top-1/2 -translate-y-1/2 text-green-600 text-sm pointer-events-none ${isAr?'left-4':'right-4'}`}></i>
+                                            <i className={`fas fa-chevron-down absolute top-1/2 -translate-y-1/2 text-green-600 text-sm pointer-events-none ${isRtl?'left-4':'right-4'}`}></i>
                                         </div>
-                                        <button onClick={()=>{if(currentJuz!=='all'){setCurrentJuz(prev=>Math.min(prev+1,30));window.scrollTo({top:300,behavior:'smooth'});}}} disabled={currentJuz==='all'||currentJuz===30} className="p-3 rounded-xl border border-slate-200 text-slate-500 disabled:opacity-50 hover:bg-green-50 hover:text-green-800 bg-white w-12 h-12 shadow-sm transition-colors"><i className={`fas ${isAr?'fa-chevron-left':'fa-chevron-right'} text-lg`}></i></button>
+                                        <button onClick={()=>{if(currentJuz!=='all'){setCurrentJuz(prev=>Math.min(prev+1,30));window.scrollTo({top:300,behavior:'smooth'});}}} disabled={currentJuz==='all'||currentJuz===30} className="p-3 rounded-xl border border-slate-200 text-slate-500 disabled:opacity-50 hover:bg-green-50 hover:text-green-800 bg-white w-12 h-12 shadow-sm transition-colors"><i className={`fas ${isRtl?'fa-chevron-left':'fa-chevron-right'} text-lg`}></i></button>
                                     </div>
                                     <div className="hidden md:block w-px h-10 bg-slate-300"></div>
                                     <button onClick={()=>setCurrentJuz(currentJuz==='all'?1:'all')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold border-2 transition-all shadow-sm ${currentJuz==='all'?'bg-green-900 text-white border-green-900 hover:bg-green-800':'text-green-900 bg-white border-green-500 hover:bg-green-50'}`}>
@@ -2757,32 +3253,31 @@ function App() {
             {/* Dialog */}
             {dialog.isOpen && (
                 <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl text-center">
-                        <p className="font-bold mb-6 text-slate-800 text-lg whitespace-pre-wrap leading-relaxed" style={{ direction: 'ltr' }}>
-                            {dialog.message}
-                        </p>
+                    <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl">
+                        <p className="font-bold mb-6 text-slate-800 text-lg">{dialog.message}</p>
                         {dialog.type==='prompt' && (
                             <input type="text" autoFocus defaultValue={dialog.defaultValue} id="dialogInput" className="w-full px-4 py-3 mb-6 border border-slate-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none" onKeyDown={(e)=>{if(e.key==='Enter') dialog.onConfirm(document.getElementById('dialogInput').value);}} />
                         )}
                         {dialog.type==='planSelect' && (
                             <select id="planSelectInput" defaultValue={currentStudent.planId||'none'} className="w-full px-4 py-3 mb-6 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none font-medium">
-                                {MEMORIZATION_PLANS.map(plan=><option key={plan.id} value={plan.id}>{isAr?plan.arTitle:plan.enTitle}</option>)}
+                                {MEMORIZATION_PLANS.map(plan=><option key={plan.id} value={plan.id}>{planMemTitle(plan, lang)}</option>)}
                             </select>
                         )}
                         {dialog.type==='certLanguage' ? (
-                            <div className="flex flex-col gap-3">
-                                <button onClick={()=>dialog.onConfirm('ar')} className="bg-green-700 text-white py-3 rounded-xl font-bold hover:bg-green-600 text-lg">بالعربية</button>
-                                <button onClick={()=>dialog.onConfirm('en')} className="bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-500 text-lg tracking-wide">English</button>
-                                <button onClick={()=>setDialog({isOpen:false})} className="text-slate-500 py-2 hover:text-slate-800 font-medium">{t('cancel')}</button>
+                            <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto">
+                                {UI_LANGS.map(code => (
+                                    <button key={code} type="button" onClick={()=>dialog.onConfirm(code)} className="bg-slate-100 hover:bg-green-100 text-slate-800 py-2.5 rounded-xl font-bold border border-slate-200 text-sm">{LANG_LABELS[code]}</button>
+                                ))}
+                                <button type="button" onClick={()=>setDialog({isOpen:false})} className="text-slate-500 py-2 hover:text-slate-800 font-medium mt-1">{t('cancel')}</button>
                             </div>
                         ) : (
-                            <div className={`flex gap-3 mt-4 justify-center`}>
-                                {dialog.type!=='alert' && <button onClick={()=>setDialog({...dialog,isOpen:false})} className="px-5 py-2.5 bg-slate-100 rounded-xl text-slate-600 font-bold hover:bg-slate-200">{t('cancel')}</button>}
+                            <div className={`flex gap-3 mt-4 ${isRtl?'justify-end':'justify-start'}`}>
+                                {dialog.type!=='alert' && <button onClick={()=>setDialog({isOpen:false})} className="px-5 py-2.5 bg-slate-100 rounded-xl text-slate-600 font-bold hover:bg-slate-200">{t('cancel')}</button>}
                                 <button onClick={()=>{
                                     if(dialog.type==='prompt') dialog.onConfirm(document.getElementById('dialogInput').value);
                                     else if(dialog.type==='planSelect') dialog.onConfirm(document.getElementById('planSelectInput').value);
                                     else dialog.onConfirm();
-                                }} className="px-5 py-2.5 w-full bg-green-900 text-white rounded-xl font-bold hover:bg-green-800 shadow-sm">{t('confirm')}</button>
+                                }} className="px-5 py-2.5 bg-green-900 text-white rounded-xl font-bold hover:bg-green-800 shadow-sm">{t('confirm')}</button>
                             </div>
                         )}
                     </div>
